@@ -114,6 +114,13 @@ serve(async (req) => {
     let result = null;
     let usedFallback = false;
 
+    // Debug: Log masked key info
+    if (apiKey) {
+      console.log(`API key found, length: ${apiKey.length}, starts with: ${apiKey.substring(0, 8)}..., ends with: ...${apiKey.substring(apiKey.length - 4)}`);
+    } else {
+      console.log('No GOOGLE_MAPS_API_KEY found in environment');
+    }
+
     // Try Google first if API key exists
     if (apiKey) {
       try {
