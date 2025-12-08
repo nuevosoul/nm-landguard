@@ -1,6 +1,6 @@
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logoImage from "@/assets/logo-gold.png";
+import logoImage from "@/assets/logo-dark.png";
 
 interface NavbarProps {
   onRunReport: () => void;
