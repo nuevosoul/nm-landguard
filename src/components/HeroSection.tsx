@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 
 interface HeroSectionProps {
   onRunReport: () => void;
+  onViewSample: () => void;
 }
 
-const HeroSection = ({ onRunReport }: HeroSectionProps) => {
+const HeroSection = ({ onRunReport, onViewSample }: HeroSectionProps) => {
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center gradient-hero overflow-hidden pt-20">
       {/* Subtle grid pattern */}
@@ -60,7 +61,7 @@ const HeroSection = ({ onRunReport }: HeroSectionProps) => {
               <FileCheck className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
               Run Instant Report — $499
             </Button>
-            <Button variant="outline" size="lg" className="border-border/50 hover:bg-muted/50">
+            <Button variant="outline" size="lg" onClick={onViewSample} className="border-border/50 hover:bg-muted/50">
               View Sample Report
             </Button>
           </div>

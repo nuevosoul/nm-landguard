@@ -42,6 +42,11 @@ const Index = () => {
     setSearchAddress("");
   };
 
+  const handleViewSample = () => {
+    setSearchAddress("123 Main Street, Santa Fe, NM 87501");
+    setAppState("results");
+  };
+
   // Show results dashboard
   if (appState === "results") {
     return <ResultsDashboard address={searchAddress} onReset={handleReset} />;
@@ -58,7 +63,7 @@ const Index = () => {
       <Navbar onRunReport={scrollToSearch} />
       
       <main className="pt-16">
-        <HeroSection onRunReport={scrollToSearch} />
+        <HeroSection onRunReport={scrollToSearch} onViewSample={handleViewSample} />
         
         <section id="features">
           <FeaturesGrid />
