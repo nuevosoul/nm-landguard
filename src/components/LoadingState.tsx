@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Database, Radio, Search } from "lucide-react";
+import logoImage from "@/assets/logo-dark.png";
 
 interface LoadingStateProps {
   onComplete: () => void;
@@ -34,6 +35,9 @@ const LoadingState = ({ onComplete }: LoadingStateProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="max-w-md mx-auto text-center p-8">
+        {/* Logo */}
+        <img src={logoImage} alt="Rio Grande Due Diligence" className="h-16 w-auto mx-auto mb-8" />
+        
         {/* Animated icon */}
         <div className="relative w-24 h-24 mx-auto mb-8">
           <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
