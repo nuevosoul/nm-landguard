@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { geocodeAddress } from "@/lib/geocoding";
+import { geocodeAddress, type QueryType } from "@/lib/geocoding";
 import { Loader2 } from "lucide-react";
 
 interface GISMapProps {
   address: string;
+  queryType?: QueryType;
 }
 
-const GISMap = ({ address }: GISMapProps) => {
+const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,9 +29,9 @@ const GISMap = ({ address }: GISMapProps) => {
 
       setIsLoading(true);
 
-      // Geocode the address
+      // Geocode the address (supports address, legal description, and coordinates)
       let center: L.LatLngExpression = [35.0844, -106.6504]; // Default: Albuquerque
-      const result = await geocodeAddress(address);
+      const result = await geocodeAddress(address, queryType);
       
       if (result) {
         center = [result.lat, result.lng];

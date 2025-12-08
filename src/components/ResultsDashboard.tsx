@@ -7,6 +7,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
+import { downloadPDF, type ReportData } from "@/lib/pdfExport";
+import { toast } from "sonner";
 
 interface StatusCardProps {
   title: string;
@@ -313,7 +315,31 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               <Button variant="outline" size="sm" onClick={onReset}>
                 New Search
               </Button>
-              <Button variant="hero" size="sm" className="shadow-glow">
+              <Button 
+                variant="hero" 
+                size="sm" 
+                className="shadow-glow"
+                onClick={() => {
+                  const pdfData: ReportData = {
+                    address: reportData.address,
+                    reportId: reportData.reportId,
+                    generatedAt: reportData.generatedAt,
+                    validUntil: reportData.validUntil,
+                    parcelId: reportData.parcelId,
+                    legalDescription: reportData.legalDescription,
+                    acreage: reportData.acreage,
+                    zoning: reportData.zoning,
+                    jurisdiction: reportData.jurisdiction,
+                    county: reportData.county,
+                    riskScore: riskScore,
+                    culturalStatus: "danger",
+                    waterStatus: "caution",
+                    habitatStatus: "safe",
+                  };
+                  downloadPDF(pdfData);
+                  toast.success("PDF report opened for printing/download");
+                }}
+              >
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
               </Button>
