@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { geocodeAddress, type QueryType } from "@/lib/geocoding";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface GISMapProps {
   address: string;
@@ -17,6 +18,8 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
   const [accuracyLevel, setAccuracyLevel] = useState<"exact" | "street" | "approximate" | "area">("exact");
   const [geocodeSource, setGeocodeSource] = useState<string | null>(null);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     const initMap = async () => {
@@ -194,7 +197,14 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
         mapInstanceRef.current = null;
       }
     };
-  }, [address]);
+  }, [address, retryCount]);
+
+  const handleRetry = () => {
+    setIsRetrying(true);
+    setRetryCount(prev => prev + 1);
+    // isRetrying will be reset when useEffect runs and sets isLoading
+    setTimeout(() => setIsRetrying(false), 100);
+  };
 
   return (
     <div className="relative">
@@ -213,10 +223,22 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-[hsl(var(--status-danger))] flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-[hsl(var(--status-danger))]">
-                Geocoding Error
-              </p>
-              <p className="text-xs text-[hsl(var(--status-danger)/0.8)] mt-0.5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-[hsl(var(--status-danger))]">
+                  Geocoding Error
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                  className="h-7 px-2 text-xs border-[hsl(var(--status-danger)/0.3)] hover:bg-[hsl(var(--status-danger)/0.1)]"
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1 ${isRetrying ? 'animate-spin' : ''}`} />
+                  Retry
+                </Button>
+              </div>
+              <p className="text-xs text-[hsl(var(--status-danger)/0.8)] mt-1">
                 {geocodeError}
               </p>
               <p className="text-[10px] text-muted-foreground mt-2">
