@@ -13,6 +13,7 @@ const GISMap = ({ address }: GISMapProps) => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [geocodedAddress, setGeocodedAddress] = useState<string | null>(null);
+  const [isApproximate, setIsApproximate] = useState(false);
 
   useEffect(() => {
     const initMap = async () => {
@@ -33,8 +34,10 @@ const GISMap = ({ address }: GISMapProps) => {
       if (result) {
         center = [result.lat, result.lng];
         setGeocodedAddress(result.displayName);
+        setIsApproximate(result.accuracy === "approximate");
       } else {
         setGeocodedAddress(null);
+        setIsApproximate(false);
       }
 
       setIsLoading(false);
@@ -193,8 +196,14 @@ const GISMap = ({ address }: GISMapProps) => {
         </div>
       )}
       {geocodedAddress && !isLoading && (
-        <div className="absolute top-2 left-2 z-10 bg-background/95 backdrop-blur px-3 py-1.5 rounded-lg text-xs text-muted-foreground border border-border max-w-[60%] truncate">
-          📍 {geocodedAddress}
+        <div className={`absolute top-2 left-2 z-10 backdrop-blur px-3 py-2 rounded-lg text-xs border max-w-[70%] ${isApproximate ? 'bg-status-caution-bg/95 border-[hsl(var(--status-caution)/0.3)] text-[hsl(var(--status-caution))]' : 'bg-background/95 border-border text-muted-foreground'}`}>
+          <div className="flex items-center gap-2">
+            <span>{isApproximate ? '⚠️' : '📍'}</span>
+            <span className="truncate">{geocodedAddress}</span>
+          </div>
+          {isApproximate && (
+            <p className="text-[10px] mt-1 opacity-80">Approximate location - exact address not found</p>
+          )}
         </div>
       )}
       <div 
