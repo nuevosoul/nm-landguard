@@ -151,6 +151,52 @@ interface PropertyData {
   source: string;
 }
 
+interface FloodData {
+  floodZone: string;
+  floodZoneDescription: string;
+  sfha: boolean;
+  riskLevel: "high" | "moderate" | "low" | "minimal";
+  source: string;
+}
+
+interface EPAData {
+  summary: {
+    superfundWithin1Mile: number;
+    superfundWithin5Miles: number;
+    triWithin1Mile: number;
+    brownfieldWithin1Mile: number;
+    rcraWithin1Mile: number;
+    overallRisk: "high" | "moderate" | "low";
+  };
+  source: string;
+}
+
+interface ElevationData {
+  elevation: number;
+  slope: number;
+  slopeCategory: string;
+  aspect: string;
+  drainageClass: string;
+  terrainDescription: string;
+  source: string;
+}
+
+interface SoilData {
+  mapUnitName: string;
+  mapUnitSymbol: string;
+  drainageClass: string;
+  hydrologicGroup: string;
+  floodingFrequency: string;
+  slopeRange: string;
+  depthToWaterTable: string;
+  texturePrimary: string;
+  constructionLimitations: string;
+  buildingSuitability: string;
+  septicsuitability: string;
+  erosionHazard: string;
+  source: string;
+}
+
 const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboardProps) => {
   const [plssData, setPlssData] = useState<PLSSResult | null>(null);
   const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
@@ -160,6 +206,13 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [countyName, setCountyName] = useState<string>("Loading...");
   const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
+  
+  // New data states
+  const [floodData, setFloodData] = useState<FloodData | null>(null);
+  const [epaData, setEpaData] = useState<EPAData | null>(null);
+  const [elevationData, setElevationData] = useState<ElevationData | null>(null);
+  const [soilData, setSoilData] = useState<SoilData | null>(null);
+  const [isLoadingEnvironmental, setIsLoadingEnvironmental] = useState(false);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -210,6 +263,79 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Fetch environmental data (FEMA, EPA, Elevation, Soil)
+  const fetchEnvironmentalData = async (lat: number, lng: number) => {
+    setIsLoadingEnvironmental(true);
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    try {
+      // Fetch all environmental data in parallel
+      const [floodRes, epaRes, elevRes, soilRes] = await Promise.allSettled([
+        fetch(`${baseUrl}/functions/v1/fema-flood`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ lat, lng }),
+        }),
+        fetch(`${baseUrl}/functions/v1/epa-envirofacts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ lat, lng, radiusMiles: 5 }),
+        }),
+        fetch(`${baseUrl}/functions/v1/elevation`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ lat, lng }),
+        }),
+        fetch(`${baseUrl}/functions/v1/soil-survey`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ lat, lng }),
+        }),
+      ]);
+
+      // Process FEMA flood data
+      if (floodRes.status === "fulfilled" && floodRes.value.ok) {
+        const data = await floodRes.value.json();
+        if (!data.error) {
+          setFloodData(data);
+          console.log("Flood data loaded:", data);
+        }
+      }
+
+      // Process EPA data
+      if (epaRes.status === "fulfilled" && epaRes.value.ok) {
+        const data = await epaRes.value.json();
+        if (!data.error) {
+          setEpaData(data);
+          console.log("EPA data loaded:", data.summary);
+        }
+      }
+
+      // Process elevation data
+      if (elevRes.status === "fulfilled" && elevRes.value.ok) {
+        const data = await elevRes.value.json();
+        if (!data.error) {
+          setElevationData(data);
+          console.log("Elevation data loaded:", data);
+        }
+      }
+
+      // Process soil data
+      if (soilRes.status === "fulfilled" && soilRes.value.ok) {
+        const data = await soilRes.value.json();
+        if (!data.error) {
+          setSoilData(data);
+          console.log("Soil data loaded:", data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching environmental data:", error);
+    } finally {
+      setIsLoadingEnvironmental(false);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
     const fetchAllPropertyData = async () => {
@@ -225,8 +351,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           const county = extractCounty(geocodeResult.displayName);
           setCountyName(county);
           
-          // Fetch property data from county assessor
+          // Fetch all data in parallel
           fetchPropertyLookup(geocodeResult.lat, geocodeResult.lng);
+          fetchEnvironmentalData(geocodeResult.lat, geocodeResult.lng);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -388,38 +515,124 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     },
   ];
 
+  // Helper to format flood risk
+  const getFloodRiskDisplay = () => {
+    if (!floodData) return { value: "Loading...", status: "neutral" as const };
+    const risk = floodData.riskLevel;
+    if (risk === "high") return { value: `Zone ${floodData.floodZone} (High Risk)`, status: "danger" as const };
+    if (risk === "moderate") return { value: `Zone ${floodData.floodZone} (Moderate Risk)`, status: "caution" as const };
+    return { value: `Zone ${floodData.floodZone} (Minimal Risk)`, status: "safe" as const };
+  };
+
+  // Helper to format EPA risk
+  const getEPARiskDisplay = () => {
+    if (!epaData) return { value: "Loading...", status: "neutral" as const };
+    const risk = epaData.summary.overallRisk;
+    if (risk === "high") return { value: "High Risk - Superfund nearby", status: "danger" as const };
+    if (risk === "moderate") return { value: "Moderate - Facilities nearby", status: "caution" as const };
+    return { value: "Low - No significant sites", status: "safe" as const };
+  };
+
   const additionalFindings = [
     {
-      icon: Building,
-      title: "Zoning & Land Use",
-      items: [
-        { label: "Current Zoning", value: "R-1 Single Family Residential" },
-        { label: "Overlay Districts", value: "None" },
-        { label: "Future Land Use", value: "Low Density Residential" },
-        { label: "Permitted Uses", value: "Single family dwelling, accessory structures" },
-      ]
-    },
-    {
       icon: AlertOctagon,
-      title: "Hazard Assessment",
+      title: "FEMA Flood Assessment",
       items: [
-        { label: "FEMA Flood Zone", value: "Zone X (Minimal Risk)" },
-        { label: "Seismic Hazard", value: "Low (Zone 1)" },
-        { label: "Wildfire Risk", value: "Low" },
-        { label: "Radon Potential", value: "Moderate - testing recommended" },
+        { 
+          label: "Flood Zone", 
+          value: floodData ? `Zone ${floodData.floodZone}` : (isLoadingEnvironmental ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Risk Level", 
+          value: floodData ? floodData.riskLevel.charAt(0).toUpperCase() + floodData.riskLevel.slice(1) : "N/A"
+        },
+        { 
+          label: "Special Flood Hazard Area", 
+          value: floodData ? (floodData.sfha ? "Yes" : "No") : "N/A"
+        },
+        { 
+          label: "Description", 
+          value: floodData?.floodZoneDescription?.split(" - ")[0] || "N/A"
+        },
       ]
     },
     {
-      icon: Users,
-      title: "Community Context",
+      icon: Building,
+      title: "EPA Environmental Hazards",
       items: [
-        { label: "School District", value: "Albuquerque Public Schools" },
-        { label: "Fire District", value: "AFD Station 1 - 0.8 miles" },
-        { label: "Census Tract", value: "35001001200" },
-        { label: "Opportunity Zone", value: "No" },
+        { 
+          label: "Superfund Sites (1 mi)", 
+          value: epaData ? epaData.summary.superfundWithin1Mile.toString() : (isLoadingEnvironmental ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Superfund Sites (5 mi)", 
+          value: epaData ? epaData.summary.superfundWithin5Miles.toString() : "N/A"
+        },
+        { 
+          label: "TRI Facilities (1 mi)", 
+          value: epaData ? epaData.summary.triWithin1Mile.toString() : "N/A"
+        },
+        { 
+          label: "Brownfield Sites (1 mi)", 
+          value: epaData ? epaData.summary.brownfieldWithin1Mile.toString() : "N/A"
+        },
+      ]
+    },
+    {
+      icon: Gauge,
+      title: "Terrain & Elevation",
+      items: [
+        { 
+          label: "Elevation", 
+          value: elevationData ? `${elevationData.elevation.toLocaleString()} ft` : (isLoadingEnvironmental ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Slope", 
+          value: elevationData ? `${elevationData.slope}% (${elevationData.slopeCategory})` : "N/A"
+        },
+        { 
+          label: "Aspect", 
+          value: elevationData?.aspect || "N/A"
+        },
+        { 
+          label: "Drainage", 
+          value: elevationData?.drainageClass?.split(" (")[0] || "N/A"
+        },
       ]
     },
   ];
+
+  // Soil findings section
+  const soilFindings = {
+    icon: TreePine,
+    title: "USDA Soil Analysis",
+    items: [
+      { 
+        label: "Soil Type", 
+        value: soilData?.mapUnitName?.substring(0, 30) + (soilData?.mapUnitName && soilData.mapUnitName.length > 30 ? "..." : "") || (isLoadingEnvironmental ? "Loading..." : "N/A")
+      },
+      { 
+        label: "Drainage Class", 
+        value: soilData?.drainageClass || "N/A"
+      },
+      { 
+        label: "Hydrologic Group", 
+        value: soilData?.hydrologicGroup || "N/A"
+      },
+      { 
+        label: "Building Suitability", 
+        value: soilData ? soilData.buildingSuitability.charAt(0).toUpperCase() + soilData.buildingSuitability.slice(1) : "N/A"
+      },
+      { 
+        label: "Septic Suitability", 
+        value: soilData ? soilData.septicsuitability.charAt(0).toUpperCase() + soilData.septicsuitability.slice(1) : "N/A"
+      },
+      { 
+        label: "Erosion Hazard", 
+        value: soilData?.erosionHazard || "N/A"
+      },
+    ]
+  };
 
   const regulatoryContacts = [
     { agency: "NM State Historic Preservation Office", phone: "(505) 827-6320", purpose: "Cultural resource surveys, NMCRIS" },
@@ -771,6 +984,57 @@ onClick={() => {
           </div>
         </section>
 
+        {/* Soil Data Section */}
+        {soilData && (
+          <section className="mb-10">
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-6">Soil & Construction Analysis</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-5 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                    <TreePine className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-display font-semibold text-foreground">Soil Properties</h3>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {soilFindings.items.map((item, i) => (
+                    <div key={i} className="flex justify-between py-1 border-b border-border/50 last:border-0">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="text-foreground font-medium">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="p-5 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                    <Building className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-display font-semibold text-foreground">Construction Considerations</h3>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground mb-1">Limitations</p>
+                    <p className="text-foreground">{soilData.constructionLimitations}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Depth to Water Table</p>
+                    <p className="text-foreground">{soilData.depthToWaterTable}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Primary Texture</p>
+                    <p className="text-foreground">{soilData.texturePrimary}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Slope Range</p>
+                    <p className="text-foreground">{soilData.slopeRange}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Data Sources */}
         <section className="mb-10">
           <div className="p-6 rounded-xl bg-muted/30 border border-border">
@@ -778,18 +1042,22 @@ onClick={() => {
               <BookOpen className="w-5 h-5 text-muted-foreground" />
               <h3 className="font-display font-semibold text-foreground">Data Sources & Methodology</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
               <div>
                 <p className="font-medium text-foreground mb-1">Cultural Resources</p>
-                <p>NMCRIS Database (ARMS), NM SHPO Records, National Register of Historic Places, Tribal Historic Preservation Offices</p>
+                <p>NMCRIS Database (ARMS), NM SHPO Records, National Register of Historic Places</p>
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">Water Resources</p>
-                <p>NM OSE WATERS Database, Declared Basin Records, MRGCD Boundaries, ABCWUA Service Area Maps</p>
+                <p className="font-medium text-foreground mb-1">Water & Flood</p>
+                <p>NM OSE WATERS, FEMA NFHL, Declared Basin Records</p>
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">Habitat & Species</p>
-                <p>USFWS Critical Habitat Designations, IPaC Database, NM BISON-M, National Wetlands Inventory</p>
+                <p className="font-medium text-foreground mb-1">Environmental</p>
+                <p>EPA Envirofacts, USFWS Critical Habitat, NWI, IPaC Database</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Terrain & Soil</p>
+                <p>Google Elevation API, USDA NRCS SSURGO Web Soil Survey</p>
               </div>
             </div>
           </div>
