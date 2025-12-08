@@ -10,10 +10,12 @@ import ResultsDashboard from "@/components/ResultsDashboard";
 import Footer from "@/components/Footer";
 
 type AppState = "landing" | "payment" | "loading" | "results" | "sample";
+type QueryType = "address" | "legal" | "coordinates";
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("landing");
   const [searchAddress, setSearchAddress] = useState("");
+  const [queryType, setQueryType] = useState<QueryType>("address");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const scrollToSearch = () => {
@@ -23,8 +25,9 @@ const Index = () => {
     }
   };
 
-  const handleSearch = (address: string) => {
-    setSearchAddress(address);
+  const handleSearch = (query: string, type: QueryType) => {
+    setSearchAddress(query);
+    setQueryType(type);
     setShowPaymentModal(true);
   };
 
