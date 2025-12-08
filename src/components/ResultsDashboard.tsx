@@ -139,6 +139,27 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [wellData, setWellData] = useState<{ wells: WellData[]; summary: WellDataSummary } | null>(null);
+  const [displayAddress, setDisplayAddress] = useState<string>(address);
+  const [countyName, setCountyName] = useState<string>("Loading...");
+
+  // Extract county from geocoded display name
+  const extractCounty = (displayName: string): string => {
+    // Google format: "597 County Rd 57, Ohkay Owingeh, NM 87566, USA"
+    // Try to find county in the address - look for "County" in the name
+    const countyMatch = displayName.match(/([A-Za-z\s]+County)/i);
+    if (countyMatch) {
+      return countyMatch[1];
+    }
+    // Fallback: try to parse from structured address
+    const parts = displayName.split(',').map(p => p.trim());
+    // Usually county is before state in Google addresses
+    for (const part of parts) {
+      if (part.toLowerCase().includes('county')) {
+        return part;
+      }
+    }
+    return "New Mexico";
+  };
 
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
@@ -149,6 +170,11 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
         const geocodeResult = await geocodeAddress(address, "address");
         if (geocodeResult && !geocodeResult.isError) {
           setCoordinates({ lat: geocodeResult.lat, lng: geocodeResult.lng });
+          setDisplayAddress(geocodeResult.displayName);
+          
+          // Extract county from display name
+          const county = extractCounty(geocodeResult.displayName);
+          setCountyName(county);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -194,8 +220,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     legalDescription: plssData?.legalDescription || "Loading legal description...",
     acreage: "0.34 acres (14,810 sq ft)",
     zoning: "R-1 Residential",
-    jurisdiction: "City of Albuquerque",
-    county: "Bernalillo County",
+    jurisdiction: countyName.includes("County") ? countyName.replace(" County", "") : "New Mexico",
+    county: countyName,
   };
 
   // Calculate overall risk score
