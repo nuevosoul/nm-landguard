@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { geocodeAddress, type QueryType } from "@/lib/geocoding";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 interface GISMapProps {
   address: string;
@@ -16,6 +16,7 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
   const [geocodedAddress, setGeocodedAddress] = useState<string | null>(null);
   const [accuracyLevel, setAccuracyLevel] = useState<"exact" | "street" | "approximate" | "area">("exact");
   const [geocodeSource, setGeocodeSource] = useState<string | null>(null);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
   useEffect(() => {
     const initMap = async () => {
@@ -28,6 +29,7 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
       }
 
       setIsLoading(true);
+      setGeocodeError(null);
 
       // Geocode the address (supports address, legal description, and coordinates)
       let center: L.LatLngExpression = [35.0844, -106.6504]; // Default: Albuquerque
@@ -38,10 +40,15 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
         setGeocodedAddress(result.displayName);
         setAccuracyLevel(result.accuracy);
         setGeocodeSource(result.source);
+        
+        if (result.isError && result.error) {
+          setGeocodeError(result.error);
+        }
       } else {
         setGeocodedAddress(null);
         setAccuracyLevel("area");
         setGeocodeSource(null);
+        setGeocodeError("Unable to geocode address. Please verify and try again.");
       }
 
       setIsLoading(false);
@@ -199,7 +206,29 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
           </div>
         </div>
       )}
-      {geocodedAddress && !isLoading && (
+      
+      {/* Error Banner */}
+      {geocodeError && !isLoading && (
+        <div className="absolute top-2 left-2 right-2 z-20 bg-status-danger-bg border border-[hsl(var(--status-danger)/0.3)] rounded-lg p-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-[hsl(var(--status-danger))] flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-[hsl(var(--status-danger))]">
+                Geocoding Error
+              </p>
+              <p className="text-xs text-[hsl(var(--status-danger)/0.8)] mt-0.5">
+                {geocodeError}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                The map is showing a default location. Report data may not be accurate for this property.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Success/Accuracy Indicator */}
+      {geocodedAddress && !isLoading && !geocodeError && (
         <div className={`absolute top-2 left-2 z-10 backdrop-blur px-3 py-2 rounded-lg text-xs border max-w-[70%] ${
           accuracyLevel === 'exact' ? 'bg-status-safe-bg/95 border-[hsl(var(--status-safe)/0.3)] text-[hsl(var(--status-safe))]' :
           accuracyLevel === 'street' ? 'bg-background/95 border-border text-muted-foreground' :
@@ -219,6 +248,7 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
           </div>
         </div>
       )}
+      
       <div 
         ref={mapRef} 
         className="h-80 w-full rounded-b-xl"
