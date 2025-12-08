@@ -198,11 +198,11 @@ const GISMap = ({ address }: GISMapProps) => {
       {geocodedAddress && !isLoading && (
         <div className={`absolute top-2 left-2 z-10 backdrop-blur px-3 py-2 rounded-lg text-xs border max-w-[70%] ${isApproximate ? 'bg-status-caution-bg/95 border-[hsl(var(--status-caution)/0.3)] text-[hsl(var(--status-caution))]' : 'bg-background/95 border-border text-muted-foreground'}`}>
           <div className="flex items-center gap-2">
-            <span>{isApproximate ? '⚠️' : '📍'}</span>
+            <span>{isApproximate ? '⚠️' : '✓'}</span>
             <span className="truncate">{geocodedAddress}</span>
           </div>
           {isApproximate && (
-            <p className="text-[10px] mt-1 opacity-80">Approximate location - exact address not found</p>
+            <p className="text-[10px] mt-1 opacity-80">Approximate - verify location manually</p>
           )}
         </div>
       )}

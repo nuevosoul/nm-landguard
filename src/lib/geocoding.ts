@@ -1,12 +1,76 @@
-// Enhanced geocoding with multiple fallback strategies
+// Enhanced geocoding with US Census Bureau (primary) + Nominatim (fallback)
 export interface GeocodingResult {
   lat: number;
   lng: number;
   displayName: string;
   accuracy: "exact" | "approximate";
+  source: "census" | "nominatim" | "fallback";
 }
 
-// New Mexico zip code coordinates for fallback
+// US Census Bureau Geocoder - most accurate for US addresses
+async function tryCensusGeocoder(address: string): Promise<GeocodingResult | null> {
+  try {
+    // Census geocoder requires specific format
+    const response = await fetch(
+      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    
+    if (data.result?.addressMatches && data.result.addressMatches.length > 0) {
+      const match = data.result.addressMatches[0];
+      return {
+        lat: match.coordinates.y,
+        lng: match.coordinates.x,
+        displayName: match.matchedAddress,
+        accuracy: "exact",
+        source: "census",
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Census geocoder error:", error);
+    return null;
+  }
+}
+
+// Nominatim as secondary geocoder
+async function tryNominatimSearch(query: string): Promise<GeocodingResult | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
+      {
+        headers: {
+          "User-Agent": "RioGrandeDueDiligence/1.0",
+        },
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        displayName: data[0].display_name,
+        accuracy: "exact",
+        source: "nominatim",
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Nominatim search error:", error);
+    return null;
+  }
+}
+
+// New Mexico zip code coordinates for last-resort fallback
 const NM_ZIP_CODES: Record<string, { lat: number; lng: number; city: string }> = {
   "87566": { lat: 36.0531, lng: -106.0625, city: "Ohkay Owingeh" },
   "87501": { lat: 35.6870, lng: -105.9378, city: "Santa Fe" },
@@ -35,136 +99,63 @@ const NM_ZIP_CODES: Record<string, { lat: number; lng: number; city: string }> =
   "88310": { lat: 32.8995, lng: -105.9603, city: "Alamogordo" },
 };
 
-// NM city coordinates for additional fallback
-const NM_CITIES: Record<string, { lat: number; lng: number }> = {
-  "albuquerque": { lat: 35.0844, lng: -106.6504 },
-  "santa fe": { lat: 35.6870, lng: -105.9378 },
-  "las cruces": { lat: 32.3199, lng: -106.7637 },
-  "rio rancho": { lat: 35.2334, lng: -106.6645 },
-  "roswell": { lat: 33.3943, lng: -104.5228 },
-  "farmington": { lat: 36.7281, lng: -108.2187 },
-  "gallup": { lat: 35.5281, lng: -108.7426 },
-  "alamogordo": { lat: 32.8995, lng: -105.9603 },
-  "clovis": { lat: 34.4048, lng: -103.2052 },
-  "hobbs": { lat: 32.7126, lng: -103.1360 },
-  "carlsbad": { lat: 32.4207, lng: -104.2288 },
-  "taos": { lat: 36.4072, lng: -105.5731 },
-  "los alamos": { lat: 35.8814, lng: -106.2989 },
-  "espanola": { lat: 35.9911, lng: -106.0806 },
-  "ohkay owingeh": { lat: 36.0531, lng: -106.0625 },
-  "san juan pueblo": { lat: 36.0531, lng: -106.0625 },
-  "bernalillo": { lat: 35.3000, lng: -106.5517 },
-  "corrales": { lat: 35.2378, lng: -106.6067 },
-  "los lunas": { lat: 34.8064, lng: -106.7334 },
-  "belen": { lat: 34.6628, lng: -106.7762 },
-  "socorro": { lat: 34.0584, lng: -106.8914 },
-  "truth or consequences": { lat: 33.1284, lng: -107.2528 },
-  "silver city": { lat: 32.7701, lng: -108.2803 },
-  "deming": { lat: 32.2687, lng: -107.7586 },
-  "portales": { lat: 34.1862, lng: -103.3344 },
-  "artesia": { lat: 32.8423, lng: -104.4033 },
-  "lovington": { lat: 32.9440, lng: -103.3488 },
-  "ruidoso": { lat: 33.3317, lng: -105.6731 },
-};
-
-async function tryNominatimSearch(query: string): Promise<GeocodingResult | null> {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-      {
-        headers: {
-          "User-Agent": "RioGrandeDueDiligence/1.0",
-        },
-      }
-    );
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    
-    if (data && data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-        displayName: data[0].display_name,
-        accuracy: "exact",
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Nominatim search error:", error);
-    return null;
-  }
-}
-
 function extractZipCode(address: string): string | null {
   const zipMatch = address.match(/\b(\d{5})(?:-\d{4})?\b/);
   return zipMatch ? zipMatch[1] : null;
 }
 
-function extractCity(address: string): string | null {
-  const lowerAddress = address.toLowerCase();
-  
-  for (const city of Object.keys(NM_CITIES)) {
-    if (lowerAddress.includes(city)) {
-      return city;
+export async function geocodeAddress(address: string): Promise<GeocodingResult | null> {
+  console.log("Geocoding address:", address);
+
+  // Strategy 1: US Census Bureau Geocoder (most accurate for US)
+  let result = await tryCensusGeocoder(address);
+  if (result) {
+    console.log("Census geocoder success:", result);
+    return result;
+  }
+
+  // Strategy 2: Try Census with "NM" expanded to "New Mexico"
+  const expandedAddress = address.replace(/,?\s*NM\s*/i, ", New Mexico ");
+  if (expandedAddress !== address) {
+    result = await tryCensusGeocoder(expandedAddress);
+    if (result) {
+      console.log("Census geocoder success (expanded):", result);
+      return result;
     }
   }
-  
-  return null;
-}
 
-export async function geocodeAddress(address: string): Promise<GeocodingResult | null> {
-  // Strategy 1: Try full address with New Mexico context
-  const fullAddressQuery = address.toLowerCase().includes("nm") || address.toLowerCase().includes("new mexico")
+  // Strategy 3: Nominatim with full address
+  const nominatimQuery = address.toLowerCase().includes("nm") || address.toLowerCase().includes("new mexico")
     ? address
     : `${address}, New Mexico, USA`;
   
-  let result = await tryNominatimSearch(fullAddressQuery);
-  if (result) return result;
-
-  // Strategy 2: Try without street number (sometimes helps with rural addresses)
-  const withoutStreetNumber = address.replace(/^\d+\s+/, "");
-  result = await tryNominatimSearch(`${withoutStreetNumber}, New Mexico, USA`);
-  if (result) return { ...result, accuracy: "approximate" };
-
-  // Strategy 3: Try just city and state
-  const city = extractCity(address);
-  if (city) {
-    result = await tryNominatimSearch(`${city}, New Mexico, USA`);
-    if (result) return { ...result, accuracy: "approximate" };
+  result = await tryNominatimSearch(nominatimQuery);
+  if (result) {
+    console.log("Nominatim success:", result);
+    return result;
   }
 
-  // Strategy 4: Use zip code lookup
+  // Strategy 4: Zip code fallback
   const zipCode = extractZipCode(address);
   if (zipCode && NM_ZIP_CODES[zipCode]) {
     const zipData = NM_ZIP_CODES[zipCode];
+    console.log("Using zip code fallback:", zipCode);
     return {
       lat: zipData.lat,
       lng: zipData.lng,
-      displayName: `${zipData.city}, NM ${zipCode}`,
+      displayName: `${zipData.city}, NM ${zipCode} (zip code area)`,
       accuracy: "approximate",
+      source: "fallback",
     };
   }
 
-  // Strategy 5: Use city lookup from our database
-  if (city && NM_CITIES[city]) {
-    const cityData = NM_CITIES[city];
-    return {
-      lat: cityData.lat,
-      lng: cityData.lng,
-      displayName: `${city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}, New Mexico`,
-      accuracy: "approximate",
-    };
-  }
-
-  // Final fallback: Albuquerque (central NM)
-  console.warn("Could not geocode address, using Albuquerque as fallback:", address);
+  // Final fallback
+  console.warn("All geocoding strategies failed for:", address);
   return {
     lat: 35.0844,
     lng: -106.6504,
-    displayName: "Albuquerque, New Mexico (approximate)",
+    displayName: "Location could not be verified - showing Albuquerque, NM",
     accuracy: "approximate",
+    source: "fallback",
   };
 }
