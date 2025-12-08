@@ -1,5 +1,6 @@
 import { AlertTriangle, AlertCircle, CheckCircle, Download, MapPin, Calendar, FileText, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import GISMap from "./GISMap";
 
 interface StatusCardProps {
   title: string;
@@ -163,19 +164,13 @@ const ResultsDashboard = ({ address, onReset }: ResultsDashboardProps) => {
           ))}
         </div>
 
-        {/* Map Placeholder */}
+        {/* Interactive Map */}
         <div className="rounded-xl bg-card border border-border overflow-hidden">
           <div className="p-4 border-b border-border flex items-center gap-2">
             <Map className="w-5 h-5 text-primary" />
             <h2 className="font-semibold text-foreground">GIS Visual Analysis</h2>
           </div>
-          <div className="h-80 bg-muted flex items-center justify-center">
-            <div className="text-center">
-              <Map className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground font-medium">Interactive Map View</p>
-              <p className="text-sm text-muted-foreground/70">GIS overlay with parcel boundaries and risk zones</p>
-            </div>
-          </div>
+          <GISMap address={address} />
         </div>
 
         {/* Disclaimer */}
