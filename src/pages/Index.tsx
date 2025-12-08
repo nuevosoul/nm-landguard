@@ -46,7 +46,7 @@ const Index = () => {
   };
 
   const handleViewSample = () => {
-    setSearchAddress("123 Main Street, Santa Fe, NM 87501");
+    setSearchAddress("777 1st Street SW, Albuquerque, NM 87102");
     setAppState("sample");
   };
 
