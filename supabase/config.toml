@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.plss-lookup]
 verify_jwt = false
+
+[functions.autocomplete]
+verify_jwt = false

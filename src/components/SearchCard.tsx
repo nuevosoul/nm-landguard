@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Search, MapPin, Lock, Zap, Shield, FileText, Navigation } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Search, MapPin, Lock, Zap, Shield, FileText, Navigation, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAddressAutocomplete } from "@/hooks/useAddressAutocomplete";
 
 interface SearchCardProps {
   onSearch: (query: string, queryType: "address" | "legal" | "coordinates") => void;
@@ -14,9 +15,36 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [activeTab, setActiveTab] = useState<"address" | "legal" | "coordinates">("address");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const { suggestions, isLoading } = useAddressAutocomplete(address, activeTab === "address");
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSuggestionClick = (suggestion: { displayName: string }) => {
+    setAddress(suggestion.displayName);
+    setShowSuggestions(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     
     if (activeTab === "address" && address.trim()) {
       onSearch(address, "address");
@@ -89,14 +117,45 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
                 <form onSubmit={handleSubmit} className="mt-6 space-y-5">
                   <TabsContent value="address" className="mt-0 space-y-4">
                     <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+                      {isLoading && (
+                        <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground animate-spin z-10" />
+                      )}
                       <Input
+                        ref={inputRef}
                         type="text"
                         placeholder="e.g., 1234 Rio Grande Blvd, Albuquerque, NM"
                         value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        className="pl-12 h-16 text-lg bg-muted/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl"
+                        onChange={(e) => {
+                          setAddress(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        className="pl-12 pr-12 h-16 text-lg bg-muted/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl"
+                        autoComplete="off"
                       />
+                      
+                      {/* Autocomplete dropdown */}
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div
+                          ref={suggestionsRef}
+                          className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-elevated z-50 overflow-hidden"
+                        >
+                          {suggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => handleSuggestionClick(suggestion)}
+                              className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-start gap-3 border-b border-border last:border-b-0"
+                            >
+                              <MapPin className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+                              <span className="text-sm text-foreground line-clamp-2">
+                                {suggestion.displayName}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
                       Enter a street address or APN (Assessor's Parcel Number)
