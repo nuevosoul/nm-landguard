@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
 import { downloadPDF, type ReportData } from "@/lib/pdfExport";
 import { toast } from "sonner";
+import logoImage from "@/assets/logo-dark.png";
 
 interface StatusCardProps {
   title: string;
@@ -296,9 +297,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-primary" />
-              </div>
+              <img src={logoImage} alt="Rio Grande Due Diligence" className="h-10 w-auto" />
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="font-display text-xl font-semibold text-foreground">Environmental Due Diligence Report</h1>

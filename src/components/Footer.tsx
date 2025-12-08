@@ -1,4 +1,5 @@
-import { Scale, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
+import logoImage from "@/assets/logo-dark.png";
 
 const Footer = () => {
   return (
@@ -11,9 +12,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Scale className="w-5 h-5 text-primary" />
-              </div>
+              <img src={logoImage} alt="Rio Grande Due Diligence" className="h-12 w-auto" />
               <div className="flex flex-col">
                 <span className="font-display text-xl font-semibold text-foreground">Rio Grande</span>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Due Diligence</span>
