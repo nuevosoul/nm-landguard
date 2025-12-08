@@ -1,4 +1,24 @@
 // PDF Export functionality using browser print-to-PDF
+export interface WellData {
+  objectId: number;
+  lat: number;
+  lng: number;
+  podType: string;
+  podId: string;
+  waterUse: string;
+  status: string;
+  permitNumber: string;
+  distance: number;
+}
+
+export interface WellDataSummary {
+  totalWells: number;
+  withinHalfMile: number;
+  withinOneMile: number;
+  byType: Record<string, number>;
+  byUse: Record<string, number>;
+}
+
 export interface ReportData {
   address: string;
   reportId: string;
@@ -14,6 +34,26 @@ export interface ReportData {
   culturalStatus: "safe" | "caution" | "danger";
   waterStatus: "safe" | "caution" | "danger";
   habitatStatus: "safe" | "caution" | "danger";
+  // OSE Well Data
+  wellData?: {
+    wells: WellData[];
+    summary: WellDataSummary;
+  };
+  // Map coordinates
+  lat?: number;
+  lng?: number;
+}
+
+function generateStaticMapUrl(lat: number, lng: number, wells: WellData[] = []): string {
+  // Use OpenStreetMap static tiles via a static map service
+  // For a simple static map, we'll use a tile URL pattern
+  const zoom = 15;
+  const width = 600;
+  const height = 300;
+  
+  // Generate OSM-based static map URL using MapTiler or similar
+  // Note: For production, you'd want a proper static map API
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01}%2C${lat-0.008}%2C${lng+0.01}%2C${lat+0.008}&layer=mapnik&marker=${lat}%2C${lng}`;
 }
 
 export function generatePDFContent(data: ReportData): string {
@@ -26,6 +66,12 @@ export function generatePDFContent(data: ReportData): string {
   const culturalConfig = statusColors[data.culturalStatus];
   const waterConfig = statusColors[data.waterStatus];
   const habitatConfig = statusColors[data.habitatStatus];
+
+  // Generate well data section
+  const wellSection = data.wellData ? generateWellSection(data.wellData) : '';
+  
+  // Generate map section
+  const mapSection = data.lat && data.lng ? generateMapSection(data.lat, data.lng, data.wellData?.wells || []) : '';
 
   return `
 <!DOCTYPE html>
@@ -46,6 +92,9 @@ export function generatePDFContent(data: ReportData): string {
       max-width: 800px; 
       margin: 0 auto;
       page-break-after: always;
+    }
+    .page:last-child {
+      page-break-after: auto;
     }
     .header { 
       display: flex; 
@@ -205,6 +254,85 @@ export function generatePDFContent(data: ReportData): string {
       margin-left: 16px;
     }
     
+    .map-section {
+      margin: 24px 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .map-header {
+      background: #0f172a;
+      color: white;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .map-container {
+      height: 250px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .map-placeholder {
+      text-align: center;
+      color: #64748b;
+    }
+    .map-coordinates {
+      font-size: 12px;
+      color: #64748b;
+      padding: 8px 16px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .well-section {
+      margin: 24px 0;
+    }
+    .well-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .well-stat {
+      background: #ecfeff;
+      border: 1px solid #06b6d4;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .well-stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0891b2;
+    }
+    .well-stat-label {
+      font-size: 11px;
+      color: #0e7490;
+      text-transform: uppercase;
+    }
+    .well-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .well-table th {
+      background: #0e7490;
+      color: white;
+      padding: 8px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .well-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .well-table tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    
     .disclaimer {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -228,6 +356,23 @@ export function generatePDFContent(data: ReportData): string {
       justify-content: space-between;
       font-size: 11px;
       color: #64748b;
+    }
+    
+    .data-source {
+      background: #f0f9ff;
+      border: 1px solid #0ea5e9;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 11px;
+    }
+    .data-source-title {
+      font-weight: 600;
+      color: #0369a1;
+      margin-bottom: 4px;
+    }
+    .data-source-text {
+      color: #0c4a6e;
     }
     
     @media print {
@@ -274,6 +419,8 @@ export function generatePDFContent(data: ReportData): string {
         </div>
       </div>
     </div>
+    
+    ${mapSection}
     
     <h2>Risk Summary</h2>
     <div class="risk-summary">
@@ -365,6 +512,8 @@ export function generatePDFContent(data: ReportData): string {
       </div>
     </div>
     
+    ${wellSection}
+    
     <h2>Critical Habitat & ESA Compliance</h2>
     <div class="finding-card">
       <div class="finding-header">
@@ -413,6 +562,118 @@ export function generatePDFContent(data: ReportData): string {
 </body>
 </html>
 `;
+}
+
+function generateMapSection(lat: number, lng: number, wells: WellData[]): string {
+  return `
+    <div class="map-section">
+      <div class="map-header">
+        <span>📍 Property Location & Nearby Water Infrastructure</span>
+      </div>
+      <div class="map-container">
+        <div class="map-placeholder">
+          <div style="font-size: 48px; margin-bottom: 8px;">🗺️</div>
+          <div style="font-weight: 600; color: #334155;">Interactive GIS Map</div>
+          <div style="font-size: 11px;">View full report online for interactive map with OSE well locations</div>
+        </div>
+      </div>
+      <div class="map-coordinates">
+        <strong>Coordinates:</strong> ${lat.toFixed(6)}°N, ${Math.abs(lng).toFixed(6)}°W
+        ${wells.length > 0 ? ` | <strong>Nearby PODs:</strong> ${wells.length} within search radius` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function generateWellSection(wellData: { wells: WellData[]; summary: WellDataSummary }): string {
+  const { wells, summary } = wellData;
+  
+  if (wells.length === 0) {
+    return `
+      <div class="well-section">
+        <h2>OSE Points of Diversion Analysis</h2>
+        <div class="finding-card">
+          <div class="finding-header">
+            <span class="finding-title">NM Office of State Engineer - Well & POD Data</span>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">No points of diversion or wells found within 1 mile of subject property.</p>
+          <div class="data-source">
+            <div class="data-source-title">Data Source</div>
+            <div class="data-source-text">NM Office of the State Engineer POD Database (mercator.env.nm.gov)</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Get top 10 nearest wells for the table
+  const nearestWells = wells.slice(0, 10);
+  
+  // Generate use type breakdown
+  const useTypes = Object.entries(summary.byUse)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([use, count]) => `${use}: ${count}`)
+    .join(' | ');
+
+  return `
+    <div class="well-section">
+      <h2>OSE Points of Diversion Analysis</h2>
+      
+      <div class="well-summary">
+        <div class="well-stat">
+          <div class="well-stat-value">${summary.totalWells}</div>
+          <div class="well-stat-label">Total PODs (1 mi)</div>
+        </div>
+        <div class="well-stat">
+          <div class="well-stat-value">${summary.withinHalfMile}</div>
+          <div class="well-stat-label">Within ½ Mile</div>
+        </div>
+        <div class="well-stat">
+          <div class="well-stat-value">${Object.keys(summary.byType).length}</div>
+          <div class="well-stat-label">POD Types</div>
+        </div>
+      </div>
+      
+      <div class="finding-card">
+        <div class="finding-header">
+          <span class="finding-title">Nearest Points of Diversion</span>
+        </div>
+        
+        <table class="well-table">
+          <thead>
+            <tr>
+              <th>POD ID</th>
+              <th>Type</th>
+              <th>Use</th>
+              <th>Status</th>
+              <th>Distance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${nearestWells.map(well => `
+              <tr>
+                <td>${well.podId || 'N/A'}</td>
+                <td>${well.podType || 'Unknown'}</td>
+                <td>${well.waterUse || 'Unknown'}</td>
+                <td>${well.status || 'Unknown'}</td>
+                <td>${well.distance} mi</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <div style="margin-top: 12px; font-size: 11px; color: #64748b;">
+          <strong>Use Type Breakdown:</strong> ${useTypes}
+        </div>
+        
+        <div class="data-source">
+          <div class="data-source-title">Data Source</div>
+          <div class="data-source-text">NM Office of the State Engineer Points of Diversion Database (mercator.env.nm.gov) - Real-time query of surface diversions and well permits.</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 export function downloadPDF(data: ReportData): void {
