@@ -6,6 +6,8 @@ export interface GeocodingResult {
   accuracy: "exact" | "street" | "approximate" | "area";
   source: "google" | "coordinates" | "fallback";
   locationType?: string;
+  error?: string;
+  isError?: boolean;
 }
 
 export type QueryType = "address" | "legal" | "coordinates";
@@ -68,18 +70,26 @@ export async function geocodeAddress(
       console.error("Geocoding error:", response.status, errorData);
 
       if (response.status === 404) {
-        // Address not found - return fallback
-        console.warn("Address not found, using fallback");
         return {
           lat: 35.0844,
           lng: -106.6504,
-          displayName: "Location not found - showing Albuquerque, NM",
+          displayName: query,
           accuracy: "area",
           source: "fallback",
+          isError: true,
+          error: "Address not found. Please verify the address and try again.",
         };
       }
 
-      throw new Error(errorData.error || "Geocoding failed");
+      return {
+        lat: 35.0844,
+        lng: -106.6504,
+        displayName: query,
+        accuracy: "area",
+        source: "fallback",
+        isError: true,
+        error: errorData.error || "Geocoding service error. Please try again.",
+      };
     }
 
     const data = await response.json();
@@ -95,13 +105,14 @@ export async function geocodeAddress(
   } catch (error) {
     console.error("Geocoding error:", error);
 
-    // Fallback to Albuquerque center
     return {
       lat: 35.0844,
       lng: -106.6504,
-      displayName: "Geocoding service unavailable - showing Albuquerque, NM",
+      displayName: query,
       accuracy: "area",
       source: "fallback",
+      isError: true,
+      error: "Geocoding service unavailable. Please check your connection and try again.",
     };
   }
 }
