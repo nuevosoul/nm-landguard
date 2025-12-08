@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.ose-wells]
 verify_jwt = false
+
+[functions.plss-lookup]
+verify_jwt = false

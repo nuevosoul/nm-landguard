@@ -1,15 +1,17 @@
+import { useState, useEffect } from "react";
 import { 
   AlertTriangle, AlertCircle, CheckCircle, Download, MapPin, Calendar, 
   FileText, Map, Scale, Shield, Building, Droplets, TreePine, Landmark,
   FileCheck, Clock, Hash, Users, Phone, ExternalLink, ChevronRight,
-  Gauge, BookOpen, AlertOctagon, Info
+  Gauge, BookOpen, AlertOctagon, Info, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
-import { downloadPDF, type ReportData } from "@/lib/pdfExport";
+import { downloadPDF, type ReportData, type WellData, type WellDataSummary } from "@/lib/pdfExport";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
+import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
 
 interface StatusCardProps {
   title: string;
@@ -133,6 +135,46 @@ interface ResultsDashboardProps {
 }
 
 const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboardProps) => {
+  const [plssData, setPlssData] = useState<PLSSResult | null>(null);
+  const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [wellData, setWellData] = useState<{ wells: WellData[]; summary: WellDataSummary } | null>(null);
+
+  // Fetch PLSS/legal description when component mounts
+  useEffect(() => {
+    const fetchPropertyData = async () => {
+      setIsLoadingPLSS(true);
+      try {
+        // First geocode to get coordinates
+        const geocodeResult = await geocodeAddress(address, "address");
+        if (geocodeResult && !geocodeResult.isError) {
+          setCoordinates({ lat: geocodeResult.lat, lng: geocodeResult.lng });
+          
+          // Then lookup PLSS
+          const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
+          if (plss) {
+            setPlssData(plss);
+            console.log('PLSS data loaded:', plss);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching property data:', error);
+      } finally {
+        setIsLoadingPLSS(false);
+      }
+    };
+
+    fetchPropertyData();
+  }, [address]);
+
+  // Handle well data callback from GISMap
+  const handleWellDataLoaded = (data: { wells: WellData[]; summary: WellDataSummary } | null) => {
+    if (data) {
+      setWellData(data);
+      console.log('Well data loaded:', data.summary);
+    }
+  };
+
   const reportData = {
     address: address || "1234 Rio Grande Blvd, Albuquerque, NM",
     reportId: "RGD-2024-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -149,7 +191,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       day: "numeric"
     }),
     parcelId: "1-014-076-384-352-00000",
-    legalDescription: "Lot 12, Block 3, Rio Grande Estates Subdivision",
+    legalDescription: plssData?.legalDescription || "Loading legal description...",
     acreage: "0.34 acres (14,810 sq ft)",
     zoning: "R-1 Residential",
     jurisdiction: "City of Albuquerque",
@@ -318,14 +360,14 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                 variant="hero" 
                 size="sm" 
                 className="shadow-glow"
-                onClick={() => {
+onClick={() => {
                   const pdfData: ReportData = {
                     address: reportData.address,
                     reportId: reportData.reportId,
                     generatedAt: reportData.generatedAt,
                     validUntil: reportData.validUntil,
                     parcelId: reportData.parcelId,
-                    legalDescription: reportData.legalDescription,
+                    legalDescription: plssData?.legalDescription || reportData.legalDescription,
                     acreage: reportData.acreage,
                     zoning: reportData.zoning,
                     jurisdiction: reportData.jurisdiction,
@@ -334,6 +376,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     culturalStatus: "danger",
                     waterStatus: "caution",
                     habitatStatus: "safe",
+                    wellData: wellData || undefined,
+                    lat: coordinates?.lat,
+                    lng: coordinates?.lng,
                   };
                   downloadPDF(pdfData);
                   toast.success("PDF report opened for printing/download");
@@ -372,7 +417,18 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     </div>
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Legal Description</span>
-                      <span className="text-foreground text-right">{reportData.legalDescription}</span>
+                      <span className="text-foreground text-right flex items-center gap-2">
+                        {isLoadingPLSS ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="text-muted-foreground">Loading...</span>
+                          </>
+                        ) : plssData?.legalDescription ? (
+                          <span>{plssData.legalDescription}</span>
+                        ) : (
+                          <span className="text-muted-foreground italic">Not available</span>
+                        )}
+                      </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Parcel Size</span>
@@ -514,7 +570,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                 Click zones for details
               </div>
             </div>
-            <GISMap address={address} />
+            <GISMap address={address} onWellDataLoaded={handleWellDataLoaded} />
           </div>
         </section>
 

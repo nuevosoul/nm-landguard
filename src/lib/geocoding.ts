@@ -10,6 +10,17 @@ export interface GeocodingResult {
   isError?: boolean;
 }
 
+export interface PLSSResult {
+  township: string;
+  range: string;
+  section: string;
+  principalMeridian: string;
+  stateCode: string;
+  legalDescription: string;
+  source: string;
+  coordinates: { lat: number; lng: number };
+}
+
 export type QueryType = "address" | "legal" | "coordinates";
 
 export async function geocodeAddress(
@@ -114,5 +125,35 @@ export async function geocodeAddress(
       isError: true,
       error: "Geocoding service unavailable. Please check your connection and try again.",
     };
+  }
+}
+
+export async function lookupPLSS(lat: number, lng: number): Promise<PLSSResult | null> {
+  console.log(`Looking up PLSS for: ${lat}, ${lng}`);
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plss-lookup`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ lat, lng }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("PLSS lookup error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log("PLSS result:", data);
+    return data as PLSSResult;
+  } catch (error) {
+    console.error("PLSS lookup error:", error);
+    return null;
   }
 }
