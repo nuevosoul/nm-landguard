@@ -14,3 +14,15 @@ verify_jwt = false
 
 [functions.property-lookup]
 verify_jwt = false
+
+[functions.fema-flood]
+verify_jwt = false
+
+[functions.epa-envirofacts]
+verify_jwt = false
+
+[functions.elevation]
+verify_jwt = false
+
+[functions.soil-survey]
+verify_jwt = false
