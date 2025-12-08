@@ -134,6 +134,23 @@ interface ResultsDashboardProps {
   isSample?: boolean;
 }
 
+interface PropertyData {
+  owner: string;
+  ownerAddress: string;
+  siteAddress: string;
+  legalDescription: string;
+  parcelId: string;
+  acreage: number;
+  landValue: number;
+  improvementValue: number;
+  totalValue: number;
+  taxableValue: number;
+  propertyClass: string;
+  taxYear: string;
+  county: string;
+  source: string;
+}
+
 const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboardProps) => {
   const [plssData, setPlssData] = useState<PLSSResult | null>(null);
   const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
@@ -141,6 +158,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [wellData, setWellData] = useState<{ wells: WellData[]; summary: WellDataSummary } | null>(null);
   const [displayAddress, setDisplayAddress] = useState<string>(address);
   const [countyName, setCountyName] = useState<string>("Loading...");
+  const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
+  const [isLoadingProperty, setIsLoadingProperty] = useState(false);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -161,9 +180,39 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     return "New Mexico";
   };
 
+  // Fetch property data from county assessor
+  const fetchPropertyLookup = async (lat: number, lng: number) => {
+    setIsLoadingProperty(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/property-lookup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ lat, lng }),
+        }
+      );
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setPropertyData(result.data);
+        console.log('Property data loaded:', result.data);
+      } else {
+        console.log('Property lookup failed:', result.error || result.message);
+      }
+    } catch (error) {
+      console.error('Property lookup error:', error);
+    } finally {
+      setIsLoadingProperty(false);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
-    const fetchPropertyData = async () => {
+    const fetchAllPropertyData = async () => {
       setIsLoadingPLSS(true);
       try {
         // First geocode to get coordinates
@@ -175,6 +224,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           // Extract county from display name
           const county = extractCounty(geocodeResult.displayName);
           setCountyName(county);
+          
+          // Fetch property data from county assessor
+          fetchPropertyLookup(geocodeResult.lat, geocodeResult.lng);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -190,7 +242,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
     };
 
-    fetchPropertyData();
+    fetchAllPropertyData();
   }, [address]);
 
   // Handle well data callback from GISMap
@@ -201,8 +253,16 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Use property data from county assessor if available, otherwise use PLSS data
+  const effectiveCounty = propertyData?.county || countyName;
+  const effectiveLegalDesc = propertyData?.legalDescription || plssData?.legalDescription || "Loading...";
+  const effectiveParcelId = propertyData?.parcelId || "Not available";
+  const effectiveAcreage = propertyData?.acreage 
+    ? `${propertyData.acreage.toFixed(2)} acres` 
+    : "Not available";
+
   const reportData = {
-    address: address || "1234 Rio Grande Blvd, Albuquerque, NM",
+    address: propertyData?.siteAddress || address || "1234 Rio Grande Blvd, Albuquerque, NM",
     reportId: "RGD-2024-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
     generatedAt: new Date().toLocaleDateString("en-US", { 
       year: "numeric", 
@@ -216,12 +276,22 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       month: "long", 
       day: "numeric"
     }),
-    parcelId: "1-014-076-384-352-00000",
-    legalDescription: plssData?.legalDescription || "Loading legal description...",
-    acreage: "0.34 acres (14,810 sq ft)",
-    zoning: "R-1 Residential",
-    jurisdiction: countyName.includes("County") ? countyName.replace(" County", "") : "New Mexico",
-    county: countyName,
+    parcelId: effectiveParcelId,
+    legalDescription: effectiveLegalDesc,
+    acreage: effectiveAcreage,
+    zoning: propertyData?.propertyClass || "R-1 Residential",
+    jurisdiction: effectiveCounty.includes("County") ? effectiveCounty.replace(" County", "") : "New Mexico",
+    county: effectiveCounty,
+    // Owner info
+    owner: propertyData?.owner || "Not available",
+    ownerAddress: propertyData?.ownerAddress || "Not available",
+    // Value info
+    landValue: propertyData?.landValue || 0,
+    improvementValue: propertyData?.improvementValue || 0,
+    totalValue: propertyData?.totalValue || 0,
+    taxableValue: propertyData?.taxableValue || 0,
+    taxYear: propertyData?.taxYear || new Date().getFullYear().toString(),
+    dataSource: propertyData?.source || "BLM PLSS / Geocoding",
   };
 
   // Calculate overall risk score
@@ -431,7 +501,7 @@ onClick={() => {
                 <h2 className="font-display text-lg font-semibold text-foreground">Subject Property</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <p className="font-display text-xl font-semibold text-foreground mb-1">{reportData.address}</p>
                   <p className="text-sm text-muted-foreground mb-4">{reportData.county}, New Mexico</p>
@@ -439,18 +509,25 @@ onClick={() => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Parcel ID (APN)</span>
-                      <span className="font-mono text-foreground">{reportData.parcelId}</span>
+                      <span className="font-mono text-foreground">
+                        {isLoadingProperty ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="text-muted-foreground">Loading...</span>
+                          </span>
+                        ) : reportData.parcelId}
+                      </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Legal Description</span>
-                      <span className="text-foreground text-right flex items-center gap-2">
-                        {isLoadingPLSS ? (
+                      <span className="text-foreground text-right flex items-center gap-2 max-w-[200px]">
+                        {isLoadingPLSS || isLoadingProperty ? (
                           <>
                             <Loader2 className="w-3 h-3 animate-spin" />
                             <span className="text-muted-foreground">Loading...</span>
                           </>
-                        ) : plssData?.legalDescription ? (
-                          <span>{plssData.legalDescription}</span>
+                        ) : reportData.legalDescription !== "Loading..." ? (
+                          <span className="truncate" title={reportData.legalDescription}>{reportData.legalDescription}</span>
                         ) : (
                           <span className="text-muted-foreground italic">Not available</span>
                         )}
@@ -461,34 +538,84 @@ onClick={() => {
                       <span className="text-foreground">{reportData.acreage}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-muted-foreground">Zoning</span>
+                      <span className="text-muted-foreground">Property Class</span>
                       <span className="text-foreground">{reportData.zoning}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="p-4 rounded-lg bg-muted/30 border border-border">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <Calendar className="w-3 h-3" />
-                      Report Generated
+                {/* Owner Info Section */}
+                <div>
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 mb-4">
+                    <div className="flex items-center gap-2 text-xs text-primary mb-2">
+                      <Users className="w-3 h-3" />
+                      Property Owner
                     </div>
-                    <p className="text-sm font-medium text-foreground">{reportData.generatedAt}</p>
+                    {isLoadingProperty ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        <span className="text-muted-foreground">Loading owner info...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-foreground">{reportData.owner}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{reportData.ownerAddress}</p>
+                      </>
+                    )}
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/30 border border-border">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <Clock className="w-3 h-3" />
-                      Report Valid Until
+                  
+                  {/* Assessed Values */}
+                  {propertyData && (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">Land Value</span>
+                        <span className="text-foreground font-medium">${reportData.landValue.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">Improvement Value</span>
+                        <span className="text-foreground font-medium">${reportData.improvementValue.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-border/50">
+                        <span className="text-muted-foreground">Total Assessed</span>
+                        <span className="text-foreground font-semibold">${reportData.totalValue.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Tax Year</span>
+                        <span className="text-foreground">{reportData.taxYear}</span>
+                      </div>
                     </div>
-                    <p className="text-sm font-medium text-foreground">{reportData.validUntil}</p>
+                  )}
+                  
+                  {!propertyData && !isLoadingProperty && (
+                    <p className="text-xs text-muted-foreground italic">
+                      Owner and value data not available for this county. County assessor integration may be limited.
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Report metadata row */}
+              <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-border">
+                <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                    <Calendar className="w-3 h-3" />
+                    Report Generated
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/30 border border-border">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <Shield className="w-3 h-3" />
-                      Data Verification
-                    </div>
-                    <p className="text-sm font-medium text-foreground">All sources verified</p>
+                  <p className="text-sm font-medium text-foreground">{reportData.generatedAt}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                    <Clock className="w-3 h-3" />
+                    Valid Until
                   </div>
+                  <p className="text-sm font-medium text-foreground">{reportData.validUntil}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                    <BookOpen className="w-3 h-3" />
+                    Data Source
+                  </div>
+                  <p className="text-sm font-medium text-foreground truncate" title={reportData.dataSource}>{reportData.dataSource}</p>
                 </div>
               </div>
             </div>
