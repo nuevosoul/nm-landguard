@@ -9,7 +9,7 @@ import LoadingState from "@/components/LoadingState";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import Footer from "@/components/Footer";
 
-type AppState = "landing" | "payment" | "loading" | "results";
+type AppState = "landing" | "payment" | "loading" | "results" | "sample";
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("landing");
@@ -44,8 +44,13 @@ const Index = () => {
 
   const handleViewSample = () => {
     setSearchAddress("123 Main Street, Santa Fe, NM 87501");
-    setAppState("results");
+    setAppState("sample");
   };
+
+  // Show sample report
+  if (appState === "sample") {
+    return <ResultsDashboard address={searchAddress} onReset={handleReset} isSample />;
+  }
 
   // Show results dashboard
   if (appState === "results") {
