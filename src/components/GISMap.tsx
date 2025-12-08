@@ -2,15 +2,45 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { geocodeAddress, type QueryType } from "@/lib/geocoding";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GISMapProps {
   address: string;
   queryType?: QueryType;
+  onWellDataLoaded?: (data: WellDataResponse | null) => void;
 }
 
-const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
+interface WellData {
+  objectId: number;
+  lat: number;
+  lng: number;
+  podType: string;
+  podId: string;
+  waterUse: string;
+  status: string;
+  permitNumber: string;
+  distance: number;
+}
+
+interface WellDataResponse {
+  wells: WellData[];
+  summary: {
+    totalWells: number;
+    withinHalfMile: number;
+    withinOneMile: number;
+    byType: Record<string, number>;
+    byUse: Record<string, number>;
+  };
+  searchRadius: number;
+  centerLat: number;
+  centerLng: number;
+  source: string;
+  dataDescription: string;
+}
+
+const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,6 +50,8 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [wellData, setWellData] = useState<WellDataResponse | null>(null);
+  const [isLoadingWells, setIsLoadingWells] = useState(false);
 
   useEffect(() => {
     const initMap = async () => {
@@ -38,8 +70,13 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
       let center: L.LatLngExpression = [35.0844, -106.6504]; // Default: Albuquerque
       const result = await geocodeAddress(address, queryType);
       
+      let lat = 35.0844;
+      let lng = -106.6504;
+
       if (result) {
         center = [result.lat, result.lng];
+        lat = result.lat;
+        lng = result.lng;
         setGeocodedAddress(result.displayName);
         setAccuracyLevel(result.accuracy);
         setGeocodeSource(result.source);
@@ -70,9 +107,6 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map);
-
-      const lat = Array.isArray(center) ? center[0] : (center as L.LatLng).lat;
-      const lng = Array.isArray(center) ? center[1] : (center as L.LatLng).lng;
 
       // Create parcel boundary around the geocoded location
       const parcelOffset = 0.001; // ~100m
@@ -141,6 +175,11 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
         </div>`
       );
 
+      // Fetch OSE well data
+      if (!result?.isError) {
+        fetchOSEWellData(lat, lng, map);
+      }
+
       // Add legend
       const LegendControl = L.Control.extend({
         onAdd: () => {
@@ -160,9 +199,13 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
                 <div style="width: 16px; height: 16px; background: #f59e0b; opacity: 0.5; border: 2px dashed #f59e0b; border-radius: 2px;"></div>
                 <span style="color: #334155;">Water Basin (Caution)</span>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                 <div style="width: 16px; height: 16px; background: #22c55e; opacity: 0.5; border: 2px solid #22c55e; border-radius: 2px;"></div>
                 <span style="color: #334155;">Critical Habitat (Clear)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 16px; height: 16px; background: #06b6d4; border-radius: 50%; border: 2px solid #0891b2;"></div>
+                <span style="color: #334155;">OSE Well/POD</span>
               </div>
             </div>
           `;
@@ -189,6 +232,58 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
       map.fitBounds(bounds, { padding: [30, 30] });
     };
 
+    const fetchOSEWellData = async (lat: number, lng: number, map: L.Map) => {
+      setIsLoadingWells(true);
+      try {
+        console.log('Fetching OSE well data...');
+        const { data, error } = await supabase.functions.invoke('ose-wells', {
+          body: { lat, lng, radiusMiles: 1 }
+        });
+
+        if (error) {
+          console.error('Error fetching well data:', error);
+          setIsLoadingWells(false);
+          return;
+        }
+
+        console.log('OSE well data received:', data);
+        setWellData(data);
+        onWellDataLoaded?.(data);
+
+        // Add well markers to map
+        if (data?.wells && Array.isArray(data.wells)) {
+          const wellIcon = L.divIcon({
+            html: `<div style="background: #06b6d4; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0891b2; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
+            className: "well-marker",
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+          });
+
+          data.wells.forEach((well: WellData) => {
+            if (well.lat && well.lng) {
+              L.marker([well.lat, well.lng], { icon: wellIcon })
+                .addTo(map)
+                .bindPopup(`
+                  <div style="font-size: 12px;">
+                    <strong style="color: #0891b2;">OSE Point of Diversion</strong><br/>
+                    <strong>ID:</strong> ${well.podId}<br/>
+                    <strong>Type:</strong> ${well.podType}<br/>
+                    <strong>Use:</strong> ${well.waterUse}<br/>
+                    <strong>Status:</strong> ${well.status}<br/>
+                    <strong>Permit:</strong> ${well.permitNumber}<br/>
+                    <strong>Distance:</strong> ${well.distance} mi
+                  </div>
+                `);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch OSE well data:', err);
+      } finally {
+        setIsLoadingWells(false);
+      }
+    };
+
     initMap();
 
     return () => {
@@ -202,7 +297,6 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
   const handleRetry = () => {
     setIsRetrying(true);
     setRetryCount(prev => prev + 1);
-    // isRetrying will be reset when useEffect runs and sets isLoading
     setTimeout(() => setIsRetrying(false), 100);
   };
 
@@ -267,6 +361,30 @@ const GISMap = ({ address, queryType = "address" }: GISMapProps) => {
                'Approximate - verify manually'}
             </span>
             {geocodeSource && <span className="text-[10px] opacity-60 uppercase">{geocodeSource}</span>}
+          </div>
+        </div>
+      )}
+
+      {/* Well Data Loading Indicator */}
+      {isLoadingWells && !isLoading && (
+        <div className="absolute top-2 right-2 z-10 bg-cyan-900/90 backdrop-blur px-3 py-2 rounded-lg text-xs border border-cyan-600/30 text-cyan-300">
+          <div className="flex items-center gap-2">
+            <Droplets className="w-4 h-4 animate-pulse" />
+            <span>Loading OSE well data...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Well Data Summary */}
+      {wellData && !isLoadingWells && !isLoading && (
+        <div className="absolute top-2 right-2 z-10 bg-cyan-900/90 backdrop-blur px-3 py-2 rounded-lg text-xs border border-cyan-600/30 text-cyan-300 max-w-[35%]">
+          <div className="flex items-center gap-2 font-medium">
+            <Droplets className="w-4 h-4" />
+            <span>OSE Wells/PODs</span>
+          </div>
+          <div className="mt-1 text-[10px] text-cyan-400/80">
+            {wellData.summary.totalWells} within 1 mile
+            {wellData.summary.withinHalfMile > 0 && ` (${wellData.summary.withinHalfMile} within ½ mi)`}
           </div>
         </div>
       )}

@@ -2,3 +2,6 @@ project_id = "snkdharivpouflpttllo"
 
 [functions.geocode]
 verify_jwt = false
+
+[functions.ose-wells]
+verify_jwt = false
