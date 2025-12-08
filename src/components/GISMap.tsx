@@ -13,7 +13,8 @@ const GISMap = ({ address }: GISMapProps) => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [geocodedAddress, setGeocodedAddress] = useState<string | null>(null);
-  const [isApproximate, setIsApproximate] = useState(false);
+  const [accuracyLevel, setAccuracyLevel] = useState<"exact" | "street" | "approximate" | "area">("exact");
+  const [geocodeSource, setGeocodeSource] = useState<string | null>(null);
 
   useEffect(() => {
     const initMap = async () => {
@@ -34,10 +35,12 @@ const GISMap = ({ address }: GISMapProps) => {
       if (result) {
         center = [result.lat, result.lng];
         setGeocodedAddress(result.displayName);
-        setIsApproximate(result.accuracy === "approximate");
+        setAccuracyLevel(result.accuracy);
+        setGeocodeSource(result.source);
       } else {
         setGeocodedAddress(null);
-        setIsApproximate(false);
+        setAccuracyLevel("area");
+        setGeocodeSource(null);
       }
 
       setIsLoading(false);
@@ -196,14 +199,23 @@ const GISMap = ({ address }: GISMapProps) => {
         </div>
       )}
       {geocodedAddress && !isLoading && (
-        <div className={`absolute top-2 left-2 z-10 backdrop-blur px-3 py-2 rounded-lg text-xs border max-w-[70%] ${isApproximate ? 'bg-status-caution-bg/95 border-[hsl(var(--status-caution)/0.3)] text-[hsl(var(--status-caution))]' : 'bg-background/95 border-border text-muted-foreground'}`}>
+        <div className={`absolute top-2 left-2 z-10 backdrop-blur px-3 py-2 rounded-lg text-xs border max-w-[70%] ${
+          accuracyLevel === 'exact' ? 'bg-status-safe-bg/95 border-[hsl(var(--status-safe)/0.3)] text-[hsl(var(--status-safe))]' :
+          accuracyLevel === 'street' ? 'bg-background/95 border-border text-muted-foreground' :
+          'bg-status-caution-bg/95 border-[hsl(var(--status-caution)/0.3)] text-[hsl(var(--status-caution))]'
+        }`}>
           <div className="flex items-center gap-2">
-            <span>{isApproximate ? '⚠️' : '✓'}</span>
+            <span>{accuracyLevel === 'exact' ? '✓' : accuracyLevel === 'street' ? '◉' : '⚠️'}</span>
             <span className="truncate">{geocodedAddress}</span>
           </div>
-          {isApproximate && (
-            <p className="text-[10px] mt-1 opacity-80">Approximate - verify location manually</p>
-          )}
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-[10px] opacity-80">
+              {accuracyLevel === 'exact' ? 'Rooftop accuracy' : 
+               accuracyLevel === 'street' ? 'Street-level accuracy' : 
+               'Approximate - verify manually'}
+            </span>
+            {geocodeSource && <span className="text-[10px] opacity-60 uppercase">{geocodeSource}</span>}
+          </div>
         </div>
       )}
       <div 
