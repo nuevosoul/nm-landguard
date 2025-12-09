@@ -53,6 +53,26 @@ export interface InfrastructureData {
   source: string;
 }
 
+export interface FloodData {
+  floodZone: string;
+  floodZoneDescription: string;
+  sfha: boolean;
+  riskLevel: "high" | "moderate" | "low" | "minimal";
+  source: string;
+}
+
+export interface EPAData {
+  summary: {
+    superfundWithin1Mile: number;
+    superfundWithin5Miles: number;
+    triWithin1Mile: number;
+    brownfieldWithin1Mile: number;
+    rcraWithin1Mile: number;
+    overallRisk: "high" | "moderate" | "low";
+  };
+  source: string;
+}
+
 export interface ReportData {
   address: string;
   reportId: string;
@@ -86,6 +106,10 @@ export interface ReportData {
   solarData?: SolarData;
   // Infrastructure API Data
   infrastructureData?: InfrastructureData;
+  // FEMA Flood Zone Data
+  floodData?: FloodData;
+  // EPA Environmental Data
+  epaData?: EPAData;
 }
 
 function generateGoogleStaticMapUrl(lat: number, lng: number, parcelGeometry?: number[][][] | null): string {
@@ -149,6 +173,12 @@ export function generatePDFContent(data: ReportData): string {
   
   // Generate infrastructure section
   const infrastructureSection = data.infrastructureData ? generateInfrastructureSection(data.infrastructureData) : '';
+  
+  // Generate FEMA flood zone section
+  const floodSection = data.floodData ? generateFloodSection(data.floodData) : '';
+  
+  // Generate EPA environmental section
+  const epaSection = data.epaData ? generateEPASection(data.epaData) : '';
   
   // Generate map section with satellite image and parcel boundary
   const mapSection = data.lat && data.lng 
@@ -598,6 +628,10 @@ export function generatePDFContent(data: ReportData): string {
       </div>
     </div>
     
+    ${floodSection}
+    
+    ${epaSection}
+    
     ${solarSection}
     
     ${infrastructureSection}
@@ -958,6 +992,162 @@ function generateInfrastructureSection(infraData: InfrastructureData): string {
       <div class="data-source">
         <div class="data-source-title">Data Source</div>
         <div class="data-source-text">${infraData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateFloodSection(floodData: FloodData): string {
+  const riskColors: Record<string, { bg: string; text: string; label: string }> = {
+    high: { bg: "#fee2e2", text: "#991b1b", label: "HIGH RISK" },
+    moderate: { bg: "#fef3c7", text: "#92400e", label: "MODERATE" },
+    low: { bg: "#dbeafe", text: "#1e40af", label: "LOW RISK" },
+    minimal: { bg: "#dcfce7", text: "#166534", label: "MINIMAL" },
+  };
+  
+  const config = riskColors[floodData.riskLevel] || riskColors.minimal;
+  
+  return `
+    <h2>FEMA Flood Zone Analysis</h2>
+    <div class="finding-card" style="background: linear-gradient(135deg, ${config.bg} 0%, #ffffff 100%);">
+      <div class="finding-header">
+        <span class="finding-title">🌊 National Flood Hazard Layer</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${config.label}</span>
+      </div>
+      
+      <div style="text-align: center; padding: 20px; margin: 16px 0; background: white; border-radius: 8px; border: 2px solid ${config.text};">
+        <div style="font-size: 36px; font-weight: bold; color: ${config.text};">${floodData.floodZone}</div>
+        <div style="font-size: 14px; color: #64748b; margin-top: 4px;">${floodData.floodZoneDescription}</div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span>Flood Zone Designation</span>
+          <span style="font-weight: 600; color: ${config.text};">${floodData.floodZone}</span>
+        </div>
+        <div class="finding-item">
+          <span>Zone Description</span>
+          <span>${floodData.floodZoneDescription}</span>
+        </div>
+        <div class="finding-item">
+          <span>Special Flood Hazard Area (SFHA)</span>
+          <span style="font-weight: 600; color: ${floodData.sfha ? '#991b1b' : '#166534'};">${floodData.sfha ? 'YES - Flood Insurance Required' : 'NO'}</span>
+        </div>
+        <div class="finding-item">
+          <span>Flood Risk Level</span>
+          <span>${floodData.riskLevel.charAt(0).toUpperCase() + floodData.riskLevel.slice(1)}</span>
+        </div>
+      </div>
+      
+      ${floodData.sfha ? `
+        <div style="margin-top: 12px; padding: 12px; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px;">
+          <h4 style="font-size: 11px; color: #991b1b; text-transform: uppercase; margin-bottom: 4px;">⚠️ Flood Insurance Requirement</h4>
+          <div style="font-size: 12px; color: #7f1d1d;">
+            This property is located within a Special Flood Hazard Area (SFHA). Federally-backed mortgages require flood insurance for properties in SFHA zones. Consider obtaining an Elevation Certificate for accurate premium calculations.
+          </div>
+        </div>
+      ` : `
+        <div style="margin-top: 12px; padding: 12px; background: #dcfce7; border: 1px solid #4ade80; border-radius: 6px;">
+          <h4 style="font-size: 11px; color: #166534; text-transform: uppercase; margin-bottom: 4px;">✓ Low Flood Risk</h4>
+          <div style="font-size: 12px; color: #14532d;">
+            This property is outside the Special Flood Hazard Area. Flood insurance is not required but may still be recommended depending on local drainage conditions.
+          </div>
+        </div>
+      `}
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${floodData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateEPASection(epaData: EPAData): string {
+  const riskColors: Record<string, { bg: string; text: string; label: string }> = {
+    high: { bg: "#fee2e2", text: "#991b1b", label: "HIGH CONCERN" },
+    moderate: { bg: "#fef3c7", text: "#92400e", label: "MODERATE" },
+    low: { bg: "#dcfce7", text: "#166534", label: "LOW CONCERN" },
+  };
+  
+  const config = riskColors[epaData.summary.overallRisk] || riskColors.low;
+  const { summary } = epaData;
+  
+  const totalSites = summary.superfundWithin1Mile + summary.triWithin1Mile + summary.brownfieldWithin1Mile + summary.rcraWithin1Mile;
+  
+  return `
+    <h2>EPA Environmental Hazards</h2>
+    <div class="finding-card" style="background: linear-gradient(135deg, #fef9c3 0%, #fffbeb 100%);">
+      <div class="finding-header">
+        <span class="finding-title">☣️ EPA Envirofacts Analysis</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${config.label}</span>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0;">
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
+          <div style="font-size: 24px; font-weight: bold; color: ${summary.superfundWithin1Mile > 0 ? '#991b1b' : '#166534'};">${summary.superfundWithin1Mile}</div>
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Superfund (1mi)</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
+          <div style="font-size: 24px; font-weight: bold; color: ${summary.triWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.triWithin1Mile}</div>
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">TRI Sites (1mi)</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
+          <div style="font-size: 24px; font-weight: bold; color: ${summary.brownfieldWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.brownfieldWithin1Mile}</div>
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Brownfield (1mi)</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
+          <div style="font-size: 24px; font-weight: bold; color: ${summary.rcraWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.rcraWithin1Mile}</div>
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">RCRA (1mi)</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span>Superfund/NPL Sites (1 mile)</span>
+          <span style="font-weight: 600; color: ${summary.superfundWithin1Mile > 0 ? '#991b1b' : '#166534'};">${summary.superfundWithin1Mile} found</span>
+        </div>
+        <div class="finding-item">
+          <span>Superfund/NPL Sites (5 miles)</span>
+          <span>${summary.superfundWithin5Miles} found</span>
+        </div>
+        <div class="finding-item">
+          <span>Toxic Release Inventory (TRI) Sites</span>
+          <span style="font-weight: 600; color: ${summary.triWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.triWithin1Mile} within 1 mile</span>
+        </div>
+        <div class="finding-item">
+          <span>Brownfield Sites</span>
+          <span>${summary.brownfieldWithin1Mile} within 1 mile</span>
+        </div>
+        <div class="finding-item">
+          <span>RCRA Hazardous Waste Facilities</span>
+          <span>${summary.rcraWithin1Mile} within 1 mile</span>
+        </div>
+        <div class="finding-item">
+          <span>Overall Environmental Risk</span>
+          <span style="font-weight: 600; color: ${config.text};">${summary.overallRisk.toUpperCase()}</span>
+        </div>
+      </div>
+      
+      ${totalSites > 0 ? `
+        <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
+          <h4 style="font-size: 11px; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">⚠️ Due Diligence Recommendation</h4>
+          <div style="font-size: 12px; color: #78350f;">
+            Environmental sites have been identified in proximity to this property. A Phase I Environmental Site Assessment (ASTM E1527-21) is recommended to evaluate potential environmental liabilities before acquisition.
+          </div>
+        </div>
+      ` : `
+        <div style="margin-top: 12px; padding: 12px; background: #dcfce7; border: 1px solid #4ade80; border-radius: 6px;">
+          <h4 style="font-size: 11px; color: #166534; text-transform: uppercase; margin-bottom: 4px;">✓ Clean Environmental Record</h4>
+          <div style="font-size: 12px; color: #14532d;">
+            No EPA-regulated environmental sites were identified within 1 mile of this property. This is a positive indicator for environmental due diligence.
+          </div>
+        </div>
+      `}
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${epaData.source}</div>
       </div>
     </div>
   `;
