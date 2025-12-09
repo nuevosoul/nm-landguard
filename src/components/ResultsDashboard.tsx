@@ -18,6 +18,7 @@ interface StatusCardProps {
   title: string;
   status: "safe" | "caution" | "danger";
   statusText: string;
+  statusTooltip?: string;
   description: string;
   details: string[];
   dataSource: string;
@@ -32,7 +33,9 @@ interface FindingItem {
   status?: "safe" | "caution" | "danger" | "neutral";
 }
 
-const StatusCard = ({ title, status, statusText, description, details, dataSource, lastUpdated, findings, recommendations }: StatusCardProps) => {
+const StatusCard = ({ title, status, statusText, statusTooltip, description, details, dataSource, lastUpdated, findings, recommendations }: StatusCardProps) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
   const statusConfig = {
     safe: {
       icon: CheckCircle,
@@ -55,30 +58,50 @@ const StatusCard = ({ title, status, statusText, description, details, dataSourc
   const Icon = config.icon;
 
   return (
-    <div className={`relative p-6 rounded-xl bg-card border ${config.borderClass} shadow-card`}>
+    <div className={`relative p-5 rounded-xl bg-card border ${config.borderClass} shadow-card`}>
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ${config.bgClass} border`}>
-          <Icon className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase tracking-wider">{statusText}</span>
+      <div className="flex items-start justify-between mb-3">
+        <div className="relative">
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${config.bgClass} border`}>
+            <Icon className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">{statusText}</span>
+            {statusTooltip && (
+              <button
+                type="button"
+                className="ml-1 text-current opacity-70 hover:opacity-100 transition-opacity"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={() => setShowTooltip(!showTooltip)}
+              >
+                <Info className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          {/* Tooltip */}
+          {showTooltip && statusTooltip && (
+            <div className="absolute top-full left-0 mt-2 z-50 w-64 p-3 rounded-lg bg-foreground text-background text-[11px] leading-relaxed shadow-lg">
+              <div className="absolute -top-1 left-4 w-2 h-2 bg-foreground rotate-45" />
+              {statusTooltip}
+            </div>
+          )}
         </div>
-        <div className="text-right text-xs text-muted-foreground">
+        <div className="text-right text-[10px] text-muted-foreground">
           <div className="flex items-center gap-1 justify-end">
-            <Clock className="w-3 h-3" />
+            <Clock className="w-2.5 h-2.5" />
             <span>{lastUpdated}</span>
           </div>
         </div>
       </div>
 
-      <h3 className="font-display text-xl font-semibold text-foreground mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground mb-4">{description}</p>
+      <h3 className="font-display text-lg font-semibold text-foreground mb-1.5">{title}</h3>
+      <p className="text-xs text-muted-foreground mb-3">{description}</p>
 
       {/* Key Findings Table */}
-      <div className="bg-muted/30 rounded-lg p-4 mb-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Key Findings</h4>
-        <div className="space-y-2">
+      <div className="bg-muted/30 rounded-lg p-3 mb-3">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Key Findings</h4>
+        <div className="space-y-1.5">
           {findings.map((finding, idx) => (
-            <div key={idx} className="flex justify-between items-center text-sm py-1 border-b border-border/50 last:border-0">
+            <div key={idx} className="flex justify-between items-center text-xs py-0.5 border-b border-border/50 last:border-0">
               <span className="text-muted-foreground">{finding.label}</span>
               <span className={`font-medium ${
                 finding.status === 'danger' ? 'text-[hsl(var(--status-danger))]' :
@@ -92,12 +115,12 @@ const StatusCard = ({ title, status, statusText, description, details, dataSourc
       </div>
 
       {/* Details */}
-      <div className="mb-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Analysis Details</h4>
-        <ul className="space-y-1.5">
+      <div className="mb-3">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Analysis Details</h4>
+        <ul className="space-y-1">
           {details.map((detail, index) => (
-            <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-              <ChevronRight className="w-3 h-3 mt-1 text-primary flex-shrink-0" />
+            <li key={index} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <ChevronRight className="w-2.5 h-2.5 mt-0.5 text-primary flex-shrink-0" />
               <span>{detail}</span>
             </li>
           ))}
@@ -105,14 +128,14 @@ const StatusCard = ({ title, status, statusText, description, details, dataSourc
       </div>
 
       {/* Recommendations */}
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-primary mb-2 flex items-center gap-1">
-          <FileCheck className="w-3 h-3" />
+      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1.5 flex items-center gap-1">
+          <FileCheck className="w-2.5 h-2.5" />
           Recommended Actions
         </h4>
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {recommendations.map((rec, idx) => (
-            <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+            <li key={idx} className="text-xs text-foreground flex items-start gap-1.5">
               <span className="text-primary font-medium">{idx + 1}.</span>
               <span>{rec}</span>
             </li>
@@ -121,8 +144,8 @@ const StatusCard = ({ title, status, statusText, description, details, dataSourc
       </div>
 
       {/* Data Source */}
-      <div className="mt-4 pt-3 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
-        <BookOpen className="w-3 h-3" />
+      <div className="mt-3 pt-2 border-t border-border flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        <BookOpen className="w-2.5 h-2.5" />
         <span>Source: {dataSource}</span>
       </div>
     </div>
@@ -668,6 +691,11 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       title: "Cultural Resources Assessment",
       status,
       statusText,
+      statusTooltip: status === "danger" 
+        ? "High Probability Zone: Previous surveys indicate cultural site density >2/acre. Class III Survey likely required before ground disturbance."
+        : status === "caution"
+        ? "Moderate Risk: Proximity to recorded cultural sites or tribal lands may require additional consultation or survey work."
+        : "Low Risk: No recorded cultural sites or tribal lands identified in immediate vicinity. Standard protocols apply.",
       description: cd 
         ? `Analysis of BIA tribal land boundaries and National Register of Historic Places data for proximity to culturally significant resources.`
         : "Loading cultural resources data from federal databases...",
@@ -687,6 +715,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       title: "Water Rights & Restrictions",
       status: "caution",
       statusText: "Caution",
+      statusTooltip: "Caution Zone: Property located within a declared underground water basin. New appropriations require OSE permit. Domestic wells limited to 3 acre-feet/year.",
       description: "Property located within a declared underground water basin administered by the New Mexico Office of the State Engineer (OSE). Special permitting requirements apply.",
       dataSource: "NM OSE WATERS Database, Basin Admin Records",
       lastUpdated: "Database current as of Dec 2024",
@@ -717,6 +746,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       title: "Critical Habitat & ESA Compliance",
       status: "safe",
       statusText: "No Recorded Conflict",
+      statusTooltip: "Clear Status: No USFWS-designated critical habitat overlaps this parcel. Standard MBTA and NPDES compliance applies for construction activities.",
       description: "USFWS Critical Habitat Analysis indicates no designated critical habitat overlap with subject parcel. Standard environmental compliance applies.",
       dataSource: "USFWS ECOS, IPaC Database, NM BISON-M",
       lastUpdated: "Data retrieved Dec 2024",
@@ -748,6 +778,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       title: "FEMA Flood Hazard",
       status: floodData?.riskLevel === "high" ? "danger" : floodData?.riskLevel === "moderate" ? "caution" : "safe",
       statusText: floodData?.riskLevel === "high" ? "High Risk" : floodData?.riskLevel === "moderate" ? "Caution" : "No Recorded Conflict",
+      statusTooltip: floodData?.sfha 
+        ? "High Risk Zone: Property is within a Special Flood Hazard Area (SFHA). Flood insurance is required for federally-backed mortgages. Base Flood Elevation determines insurance rates."
+        : "Minimal Risk: Property is outside the 100-year floodplain. Flood insurance not required but may be recommended for peace of mind.",
       description: floodData 
         ? `Property flood analysis based on FEMA National Flood Hazard Layer (NFHL). ${floodData.floodZoneDescription}`
         : "Loading FEMA flood hazard data...",

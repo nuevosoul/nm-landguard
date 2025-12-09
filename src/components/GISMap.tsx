@@ -471,6 +471,13 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
         className="h-80 w-full rounded-b-xl"
         style={{ minHeight: "320px" }}
       />
+      
+      {/* RGDD Watermark */}
+      {!isLoading && (
+        <div className="absolute bottom-2 right-20 z-10 text-white/30 font-mono text-[10px] font-bold tracking-widest pointer-events-none select-none">
+          RGDD INTELLIGENCE
+        </div>
+      )}
     </div>
   );
 };
