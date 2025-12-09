@@ -249,6 +249,24 @@
   }
 }
 
+@keyframes scanner {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
@@ -266,13 +284,8 @@
   background-size: 200% 100%;
 }
 
-@keyframes ticker {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+.animate-scanner {
+  animation: scanner 2.5s ease-in-out infinite;
 }
 
 .animate-ticker {

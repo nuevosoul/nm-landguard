@@ -466,6 +466,13 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
         </Button>
       )}
       
+      {/* Map Scanner Effect */}
+      {isLoading && (
+        <div className="absolute inset-0 z-5 overflow-hidden pointer-events-none rounded-b-xl">
+          <div className="absolute inset-y-0 w-32 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent animate-scanner" />
+        </div>
+      )}
+      
       <div 
         ref={mapRef} 
         className="h-80 w-full rounded-b-xl"

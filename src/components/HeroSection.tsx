@@ -9,8 +9,28 @@ interface HeroSectionProps {
 const HeroSection = ({ onRunReport, onViewSample }: HeroSectionProps) => {
   return (
     <section className="relative min-h-[60vh] flex items-center justify-center gradient-hero overflow-hidden pt-14">
-      {/* Subtle grid pattern */}
-      <div className="absolute inset-0 opacity-[0.02]">
+      {/* Topographic contour pattern */}
+      <div className="absolute inset-0 opacity-[0.05]">
+        <svg className="w-full h-full" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="topoPattern" patternUnits="userSpaceOnUse" width="200" height="200">
+              {/* Contour lines */}
+              <path d="M0,50 Q50,30 100,50 T200,50" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <path d="M0,100 Q60,70 120,100 T200,100" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <path d="M0,150 Q40,130 80,150 Q120,170 160,150 T200,150" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <ellipse cx="100" cy="100" rx="40" ry="25" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <ellipse cx="100" cy="100" rx="60" ry="40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <ellipse cx="100" cy="100" rx="80" ry="55" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <path d="M20,180 Q60,160 100,180 T180,180" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+              <path d="M30,20 Q70,40 110,20 T190,20" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-foreground"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#topoPattern)" />
+        </svg>
+      </div>
+      
+      {/* Subtle grid overlay */}
+      <div className="absolute inset-0 opacity-[0.015]">
         <div className="absolute inset-0" style={{
           backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px),
                            linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
