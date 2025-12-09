@@ -215,6 +215,26 @@ interface CulturalResourcesData {
   source: string;
 }
 
+interface SolarData {
+  sunlightHoursPerYear: number;
+  maxArrayPanelsCount: number;
+  maxArrayAreaMeters2: number;
+  solarPotential: "excellent" | "good" | "fair" | "poor";
+  annualSavingsEstimate: number;
+  roofAreaSqFt: number;
+  recommendedCapacityKw: number;
+  source: string;
+}
+
+interface InfrastructureData {
+  nearestFireStation: { name: string; distance: number; isoClass?: number };
+  nearestPolice: { name: string; distance: number };
+  nearestHospital: { name: string; distance: number };
+  nearestSchool: { name: string; distance: number };
+  nearestGrocery: { name: string; distance: number };
+  source: string;
+}
+
 const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboardProps) => {
   const [plssData, setPlssData] = useState<PLSSResult | null>(null);
   const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
@@ -231,8 +251,12 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [elevationData, setElevationData] = useState<ElevationData | null>(null);
   const [soilData, setSoilData] = useState<SoilData | null>(null);
   const [culturalData, setCulturalData] = useState<CulturalResourcesData | null>(null);
+  const [solarData, setSolarData] = useState<SolarData | null>(null);
+  const [infrastructureData, setInfrastructureData] = useState<InfrastructureData | null>(null);
   const [isLoadingEnvironmental, setIsLoadingEnvironmental] = useState(false);
   const [isLoadingCultural, setIsLoadingCultural] = useState(false);
+  const [isLoadingSolar, setIsLoadingSolar] = useState(false);
+  const [isLoadingInfrastructure, setIsLoadingInfrastructure] = useState(false);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -383,6 +407,60 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Fetch Google Solar API data
+  const fetchSolarData = async (lat: number, lng: number) => {
+    setIsLoadingSolar(true);
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    try {
+      const response = await fetch(`${baseUrl}/functions/v1/google-solar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ lat, lng }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.error) {
+          setSolarData(data);
+          console.log("Solar data loaded:", data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching solar data:", error);
+    } finally {
+      setIsLoadingSolar(false);
+    }
+  };
+
+  // Fetch Google Places infrastructure data
+  const fetchInfrastructureData = async (lat: number, lng: number) => {
+    setIsLoadingInfrastructure(true);
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    try {
+      const response = await fetch(`${baseUrl}/functions/v1/google-places`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ lat, lng }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.error) {
+          setInfrastructureData(data);
+          console.log("Infrastructure data loaded:", data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching infrastructure data:", error);
+    } finally {
+      setIsLoadingInfrastructure(false);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
     const fetchAllPropertyData = async () => {
@@ -402,6 +480,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           fetchPropertyLookup(geocodeResult.lat, geocodeResult.lng);
           fetchEnvironmentalData(geocodeResult.lat, geocodeResult.lng);
           fetchCulturalData(geocodeResult.lat, geocodeResult.lng);
+          fetchSolarData(geocodeResult.lat, geocodeResult.lng);
+          fetchInfrastructureData(geocodeResult.lat, geocodeResult.lng);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -833,20 +913,31 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     },
   ];
 
-  // Development Suitability Add-Ons (Solar & Infrastructure)
+  // Development Suitability Add-Ons (Solar & Infrastructure) - now using real API data
   const developmentAddOns = {
     solar: {
-      score: "Excellent",
-      hoursPerYear: 3200,
-      panelCapacity: "8.2 kW recommended",
-      annualSavings: "$1,840/year estimated",
-      roofArea: "1,200 sq ft usable",
+      score: solarData?.solarPotential 
+        ? solarData.solarPotential.charAt(0).toUpperCase() + solarData.solarPotential.slice(1) 
+        : (isLoadingSolar ? "Loading..." : "Excellent"),
+      hoursPerYear: solarData?.sunlightHoursPerYear || 3200,
+      panelCapacity: solarData?.recommendedCapacityKw 
+        ? `${solarData.recommendedCapacityKw} kW recommended` 
+        : "8.0 kW recommended",
+      annualSavings: solarData?.annualSavingsEstimate 
+        ? `$${solarData.annualSavingsEstimate.toLocaleString()}/year estimated` 
+        : "$1,840/year estimated",
+      roofArea: solarData?.roofAreaSqFt 
+        ? `${solarData.roofAreaSqFt.toLocaleString()} sq ft usable` 
+        : "1,200 sq ft usable",
+      source: solarData?.source || "Estimated",
     },
     infrastructure: {
-      nearestFireStation: { name: "Station 7 - Downtown", distance: 2.1, isoClass: 4 },
-      nearestPolice: { name: "APD Valley Substation", distance: 1.8 },
-      nearestHospital: { name: "Presbyterian Downtown", distance: 3.2 },
-      nearestSchool: { name: "Longfellow Elementary", distance: 0.6 },
+      nearestFireStation: infrastructureData?.nearestFireStation || { name: isLoadingInfrastructure ? "Loading..." : "Data unavailable", distance: 0, isoClass: 0 },
+      nearestPolice: infrastructureData?.nearestPolice || { name: isLoadingInfrastructure ? "Loading..." : "Data unavailable", distance: 0 },
+      nearestHospital: infrastructureData?.nearestHospital || { name: isLoadingInfrastructure ? "Loading..." : "Data unavailable", distance: 0 },
+      nearestSchool: infrastructureData?.nearestSchool || { name: isLoadingInfrastructure ? "Loading..." : "Data unavailable", distance: 0 },
+      nearestGrocery: infrastructureData?.nearestGrocery || { name: isLoadingInfrastructure ? "Loading..." : "Data unavailable", distance: 0 },
+      source: infrastructureData?.source || "Pending",
     },
   };
 
@@ -1264,11 +1355,20 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               </div>
               
               <div className="text-center py-4 mb-4">
-                <p className="text-3xl font-bold text-amber-500">{developmentAddOns.solar.hoursPerYear.toLocaleString()}</p>
-                <p className="text-sm text-amber-600/80">hours/year sunlight</p>
-                <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-xs font-semibold uppercase">
-                  {developmentAddOns.solar.score} Solar Potential
-                </span>
+                {isLoadingSolar ? (
+                  <div className="flex items-center justify-center gap-2 text-amber-500">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Analyzing solar potential...</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-amber-500">{developmentAddOns.solar.hoursPerYear.toLocaleString()}</p>
+                    <p className="text-sm text-amber-600/80">hours/year sunlight</p>
+                    <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-xs font-semibold uppercase">
+                      {developmentAddOns.solar.score} Solar Potential
+                    </span>
+                  </>
+                )}
               </div>
               
               <div className="space-y-2 text-sm">
@@ -1280,9 +1380,13 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                   <span className="text-muted-foreground">Est. Annual Savings</span>
                   <span className="text-amber-500 font-semibold">{developmentAddOns.solar.annualSavings}</span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1 border-b border-amber-500/20">
                   <span className="text-muted-foreground">Usable Roof Area</span>
                   <span className="text-foreground font-medium">{developmentAddOns.solar.roofArea}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground text-xs">Source</span>
+                  <span className="text-foreground text-xs">{developmentAddOns.solar.source}</span>
                 </div>
               </div>
             </div>
@@ -1300,11 +1404,22 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               </div>
               
               <div className="text-center py-4 mb-4">
-                <p className="text-lg font-semibold text-foreground">{developmentAddOns.infrastructure.nearestFireStation.name}</p>
-                <p className="text-2xl font-bold text-blue-500">{developmentAddOns.infrastructure.nearestFireStation.distance} mi</p>
-                <span className="inline-block mt-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-500 text-xs font-semibold uppercase">
-                  ISO Class {developmentAddOns.infrastructure.nearestFireStation.isoClass}
-                </span>
+                {isLoadingInfrastructure ? (
+                  <div className="flex items-center justify-center gap-2 text-blue-500">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Finding nearby services...</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-lg font-semibold text-foreground">{developmentAddOns.infrastructure.nearestFireStation.name}</p>
+                    <p className="text-2xl font-bold text-blue-500">{developmentAddOns.infrastructure.nearestFireStation.distance} mi</p>
+                    {developmentAddOns.infrastructure.nearestFireStation.isoClass > 0 && (
+                      <span className="inline-block mt-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-500 text-xs font-semibold uppercase">
+                        ISO Class {developmentAddOns.infrastructure.nearestFireStation.isoClass}
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
               
               <div className="space-y-2 text-sm">
@@ -1320,9 +1435,17 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                   <span className="text-muted-foreground">Nearest Hospital</span>
                   <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestHospital.distance} mi</span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1 border-b border-blue-500/20">
                   <span className="text-muted-foreground">Nearest School</span>
                   <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestSchool.distance} mi</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-blue-500/20">
+                  <span className="text-muted-foreground">Nearest Grocery</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestGrocery.distance} mi</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground text-xs">Source</span>
+                  <span className="text-foreground text-xs">{developmentAddOns.infrastructure.source}</span>
                 </div>
               </div>
             </div>

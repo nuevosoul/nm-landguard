@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.cultural-resources]
 verify_jwt = false
+
+[functions.google-solar]
+verify_jwt = false
+
+[functions.google-places]
+verify_jwt = false
