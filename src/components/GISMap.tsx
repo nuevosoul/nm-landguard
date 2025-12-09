@@ -53,6 +53,7 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
   const [isRetrying, setIsRetrying] = useState(false);
   const [wellData, setWellData] = useState<WellDataResponse | null>(null);
   const [isLoadingWells, setIsLoadingWells] = useState(false);
+  const [wellRetryCountdown, setWellRetryCountdown] = useState<number | null>(null);
   const [isSatelliteView, setIsSatelliteView] = useState(true);
   const streetLayerRef = useRef<L.TileLayer | null>(null);
   const satelliteLayerRef = useRef<L.TileLayer | null>(null);
@@ -273,10 +274,12 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
       map.fitBounds(bounds, { padding: [30, 30] });
     };
 
-    const fetchOSEWellData = async (lat: number, lng: number, map: L.Map) => {
+    const fetchOSEWellData = async (lat: number, lng: number, map: L.Map, retryAttempt = 0) => {
       setIsLoadingWells(true);
+      setWellRetryCountdown(null);
+      
       try {
-        console.log('Fetching OSE well data...');
+        console.log(`Fetching OSE well data... (attempt ${retryAttempt + 1})`);
         const { data, error } = await supabase.functions.invoke('ose-wells', {
           body: { lat, lng, radiusMiles: 1 }
         });
@@ -288,6 +291,38 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
         }
 
         console.log('OSE well data received:', data);
+        
+        // Check if service is temporarily unavailable - schedule retry
+        if (data?.serviceStatus === 'temporarily_unavailable' && retryAttempt < 3) {
+          console.log('OSE service temporarily unavailable, scheduling retry in 30 seconds...');
+          setWellData(data);
+          onWellDataLoaded?.(data);
+          setIsLoadingWells(false);
+          
+          // Start countdown
+          let countdown = 30;
+          setWellRetryCountdown(countdown);
+          
+          const countdownInterval = setInterval(() => {
+            countdown -= 1;
+            setWellRetryCountdown(countdown);
+            if (countdown <= 0) {
+              clearInterval(countdownInterval);
+            }
+          }, 1000);
+          
+          // Schedule retry after 30 seconds
+          setTimeout(() => {
+            clearInterval(countdownInterval);
+            setWellRetryCountdown(null);
+            if (mapInstanceRef.current) {
+              fetchOSEWellData(lat, lng, mapInstanceRef.current, retryAttempt + 1);
+            }
+          }, 30000);
+          
+          return;
+        }
+        
         setWellData(data);
         onWellDataLoaded?.(data);
 
@@ -432,15 +467,31 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
 
       {/* Well Data Summary */}
       {wellData && !isLoadingWells && !isLoading && (
-        <div className="absolute top-2 right-2 z-10 bg-cyan-900/90 backdrop-blur px-3 py-2 rounded-lg text-xs border border-cyan-600/30 text-cyan-300 max-w-[35%]">
+        <div className={`absolute top-2 right-2 z-10 backdrop-blur px-3 py-2 rounded-lg text-xs border max-w-[40%] ${
+          (wellData as any).serviceStatus === 'temporarily_unavailable' 
+            ? 'bg-amber-900/90 border-amber-600/30 text-amber-300' 
+            : 'bg-cyan-900/90 border-cyan-600/30 text-cyan-300'
+        }`}>
           <div className="flex items-center gap-2 font-medium">
             <Droplets className="w-4 h-4" />
             <span>OSE Wells/PODs</span>
           </div>
-          <div className="mt-1 text-[10px] text-cyan-400/80">
-            {wellData.summary.totalWells} within 1 mile
-            {wellData.summary.withinHalfMile > 0 && ` (${wellData.summary.withinHalfMile} within ½ mi)`}
-          </div>
+          {(wellData as any).serviceStatus === 'temporarily_unavailable' ? (
+            <div className="mt-1 text-[10px] text-amber-400/80">
+              <span>Service temporarily unavailable</span>
+              {wellRetryCountdown !== null && (
+                <span className="block mt-1">
+                  <RefreshCw className="w-3 h-3 inline mr-1 animate-spin" />
+                  Retrying in {wellRetryCountdown}s...
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="mt-1 text-[10px] text-cyan-400/80">
+              {wellData.summary.totalWells} within 1 mile
+              {wellData.summary.withinHalfMile > 0 && ` (${wellData.summary.withinHalfMile} within ½ mi)`}
+            </div>
+          )}
         </div>
       )}
 
