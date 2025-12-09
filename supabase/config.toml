@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.soil-survey]
 verify_jwt = false
+
+[functions.static-map]
+verify_jwt = false
