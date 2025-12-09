@@ -19,6 +19,22 @@ export interface WellDataSummary {
   byUse: Record<string, number>;
 }
 
+export interface CulturalResourcesData {
+  nearestTribalLand: { name: string; type: string; distance: number } | null;
+  tribalLandsWithin5Miles: { name: string; type: string; distance: number }[];
+  onTribalLand: boolean;
+  tribalConsultationRequired: boolean;
+  tribalConsultationReason: string;
+  nrhpPropertiesWithin1Mile: { name: string; refNumber: string; distance: number; resourceType: string }[];
+  nearestNRHPProperty: { name: string; distance: number } | null;
+  inHistoricDistrict: boolean;
+  historicDistrictName: string | null;
+  riskLevel: "high" | "moderate" | "low";
+  section106Required: boolean;
+  recommendedActions: string[];
+  source: string;
+}
+
 export interface ReportData {
   address: string;
   reportId: string;
@@ -46,6 +62,8 @@ export interface ReportData {
   parcelGeometry?: number[][][] | null;
   // Pre-generated satellite map URL (base64)
   satelliteMapUrl?: string;
+  // Cultural Resources Data
+  culturalData?: CulturalResourcesData;
 }
 
 function generateGoogleStaticMapUrl(lat: number, lng: number, parcelGeometry?: number[][][] | null): string {
@@ -100,6 +118,9 @@ export function generatePDFContent(data: ReportData): string {
 
   // Generate well data section
   const wellSection = data.wellData ? generateWellSection(data.wellData) : '';
+  
+  // Generate cultural resources section
+  const culturalSection = generateCulturalSection(data.culturalData, culturalConfig);
   
   // Generate map section with satellite image and parcel boundary
   const mapSection = data.lat && data.lng 
@@ -477,39 +498,7 @@ export function generatePDFContent(data: ReportData): string {
       </div>
     </div>
     
-    <h2>Cultural Resources Assessment</h2>
-    <div class="finding-card">
-      <div class="finding-header">
-        <span class="finding-title">NMCRIS & Historic Records Analysis</span>
-        <span class="status-badge" style="background: ${culturalConfig.text}; color: white;">${culturalConfig.label}</span>
-      </div>
-      <div class="finding-items">
-        <div class="finding-item">
-          <span>Historic District Proximity</span>
-          <span>0.47 miles</span>
-        </div>
-        <div class="finding-item">
-          <span>Registered Archaeological Sites</span>
-          <span>2 within 1 mile</span>
-        </div>
-        <div class="finding-item">
-          <span>NRHP Listed Properties</span>
-          <span>1 adjacent</span>
-        </div>
-        <div class="finding-item">
-          <span>Previous Cultural Surveys</span>
-          <span>None on record</span>
-        </div>
-      </div>
-      <div class="recommendations">
-        <h4>Recommended Actions</h4>
-        <ol>
-          <li>Commission Phase I Archaeological Survey before ground disturbance</li>
-          <li>Submit NMCRIS Project ID application to SHPO</li>
-          <li>Initiate tribal consultation per NHPA Section 106</li>
-        </ol>
-      </div>
-    </div>
+    ${culturalSection}
     
     <h2>Water Rights & Restrictions</h2>
     <div class="finding-card">
@@ -714,6 +703,106 @@ function generateWellSection(wellData: { wells: WellData[]; summary: WellDataSum
           <div class="data-source-title">Data Source</div>
           <div class="data-source-text">NM Office of the State Engineer Points of Diversion Database (mercator.env.nm.gov) - Real-time query of surface diversions and well permits.</div>
         </div>
+      </div>
+    </div>
+  `;
+}
+
+function generateCulturalSection(
+  culturalData: CulturalResourcesData | undefined, 
+  statusConfig: { bg: string; text: string; label: string }
+): string {
+  const cd = culturalData;
+  
+  // Build findings based on real data
+  const findings: string[] = [];
+  
+  if (cd) {
+    // Tribal land proximity
+    if (cd.onTribalLand) {
+      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #991b1b; font-weight: 600;">ON TRIBAL LAND</span></div>`);
+    } else if (cd.nearestTribalLand) {
+      findings.push(`<div class="finding-item"><span>Nearest Tribal Land</span><span>${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(2)} mi)</span></div>`);
+    } else {
+      findings.push(`<div class="finding-item"><span>Tribal Land Proximity</span><span>None within 5 miles</span></div>`);
+    }
+    
+    // Tribal lands count
+    if (cd.tribalLandsWithin5Miles.length > 0) {
+      findings.push(`<div class="finding-item"><span>Tribal Lands Within 5 Miles</span><span>${cd.tribalLandsWithin5Miles.length} identified</span></div>`);
+    }
+    
+    // NRHP Properties
+    if (cd.nrhpPropertiesWithin1Mile.length > 0) {
+      findings.push(`<div class="finding-item"><span>NRHP Properties Within 1 Mile</span><span>${cd.nrhpPropertiesWithin1Mile.length} listed</span></div>`);
+      if (cd.nearestNRHPProperty) {
+        findings.push(`<div class="finding-item"><span>Nearest NRHP Property</span><span>${cd.nearestNRHPProperty.name} (${cd.nearestNRHPProperty.distance.toFixed(2)} mi)</span></div>`);
+      }
+    } else {
+      findings.push(`<div class="finding-item"><span>NRHP Properties Within 1 Mile</span><span>None found</span></div>`);
+    }
+    
+    // Historic District
+    if (cd.inHistoricDistrict) {
+      findings.push(`<div class="finding-item"><span>Historic District</span><span style="color: #991b1b; font-weight: 600;">Within ${cd.historicDistrictName || 'district'}</span></div>`);
+    } else {
+      findings.push(`<div class="finding-item"><span>Historic District</span><span>Not within historic district</span></div>`);
+    }
+    
+    // Section 106
+    findings.push(`<div class="finding-item"><span>Section 106 Review Required</span><span>${cd.section106Required ? 'Yes' : 'No'}</span></div>`);
+    
+    // Tribal consultation
+    findings.push(`<div class="finding-item"><span>Tribal Consultation Required</span><span>${cd.tribalConsultationRequired ? 'Yes' : 'No'}</span></div>`);
+  } else {
+    findings.push(`<div class="finding-item"><span>Data Status</span><span>Loading or unavailable</span></div>`);
+  }
+  
+  // Build recommendations
+  const recommendations = cd?.recommendedActions || [
+    "Commission Phase I Archaeological Survey before ground disturbance",
+    "Submit NMCRIS Project ID application to SHPO",
+    "Initiate tribal consultation per NHPA Section 106"
+  ];
+  
+  const source = cd?.source || "BIA AIAN Land Areas, National Register of Historic Places";
+  
+  return `
+    <h2>Cultural Resources Assessment</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">Tribal Lands & Historic Properties Analysis</span>
+        <span class="status-badge" style="background: ${statusConfig.text}; color: white;">${statusConfig.label}</span>
+      </div>
+      <div class="finding-items">
+        ${findings.join('')}
+      </div>
+      ${cd?.tribalLandsWithin5Miles && cd.tribalLandsWithin5Miles.length > 0 ? `
+        <div style="margin-top: 12px; padding: 10px; background: #fef9e7; border: 1px solid #d4a574; border-radius: 6px;">
+          <h4 style="font-size: 11px; color: #92400e; text-transform: uppercase; margin-bottom: 8px;">Tribal Lands Within 5 Miles</h4>
+          <div style="font-size: 12px; color: #78350f;">
+            ${cd.tribalLandsWithin5Miles.slice(0, 5).map(t => `• ${t.name} (${t.distance.toFixed(2)} mi)`).join('<br/>')}
+            ${cd.tribalLandsWithin5Miles.length > 5 ? `<br/><em>...and ${cd.tribalLandsWithin5Miles.length - 5} more</em>` : ''}
+          </div>
+        </div>
+      ` : ''}
+      ${cd?.nrhpPropertiesWithin1Mile && cd.nrhpPropertiesWithin1Mile.length > 0 ? `
+        <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px;">
+          <h4 style="font-size: 11px; color: #0369a1; text-transform: uppercase; margin-bottom: 8px;">NRHP Listed Properties Nearby</h4>
+          <div style="font-size: 12px; color: #0c4a6e;">
+            ${cd.nrhpPropertiesWithin1Mile.slice(0, 5).map(p => `• ${p.name} (${p.distance.toFixed(2)} mi) - ${p.resourceType}`).join('<br/>')}
+          </div>
+        </div>
+      ` : ''}
+      <div class="recommendations">
+        <h4>Recommended Actions</h4>
+        <ol>
+          ${recommendations.map(r => `<li>${r}</li>`).join('')}
+        </ol>
+      </div>
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${source}</div>
       </div>
     </div>
   `;
