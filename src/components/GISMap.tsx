@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { geocodeAddress, type QueryType } from "@/lib/geocoding";
-import { Loader2, AlertTriangle, RefreshCw, Droplets } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Droplets, Satellite, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,6 +10,7 @@ interface GISMapProps {
   address: string;
   queryType?: QueryType;
   onWellDataLoaded?: (data: WellDataResponse | null) => void;
+  parcelGeometry?: number[][][] | null;
 }
 
 interface WellData {
@@ -40,7 +41,7 @@ interface WellDataResponse {
   dataDescription: string;
 }
 
-const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProps) => {
+const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeometry }: GISMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +53,9 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProp
   const [isRetrying, setIsRetrying] = useState(false);
   const [wellData, setWellData] = useState<WellDataResponse | null>(null);
   const [isLoadingWells, setIsLoadingWells] = useState(false);
+  const [isSatelliteView, setIsSatelliteView] = useState(true);
+  const streetLayerRef = useRef<L.TileLayer | null>(null);
+  const satelliteLayerRef = useRef<L.TileLayer | null>(null);
 
   useEffect(() => {
     const initMap = async () => {
@@ -102,27 +106,61 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProp
 
       mapInstanceRef.current = map;
 
-      // Add OpenStreetMap tiles
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      // Create tile layers
+      const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
-      }).addTo(map);
+      });
 
-      // Create parcel boundary around the geocoded location
-      const parcelOffset = 0.001; // ~100m
-      const parcelCoords: L.LatLngExpression[] = [
-        [lat + parcelOffset, lng - parcelOffset],
-        [lat + parcelOffset, lng + parcelOffset],
-        [lat - parcelOffset, lng + parcelOffset],
-        [lat - parcelOffset, lng - parcelOffset],
-      ];
+      // Google Satellite tiles (using publicly available endpoint)
+      const satelliteLayer = L.tileLayer(
+        "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        {
+          attribution: '&copy; Google',
+          maxZoom: 20,
+        }
+      );
 
-      const parcelPolygon = L.polygon(parcelCoords, {
-        color: "#3b82f6",
-        weight: 3,
-        fillColor: "#3b82f6",
-        fillOpacity: 0.1,
-      }).addTo(map);
+      streetLayerRef.current = streetLayer;
+      satelliteLayerRef.current = satelliteLayer;
+
+      // Start with satellite view
+      satelliteLayer.addTo(map);
+
+      // Create parcel boundary - use real geometry if available, otherwise approximate
+      let parcelPolygon: L.Polygon;
+      
+      if (parcelGeometry && parcelGeometry.length > 0) {
+        // Use actual parcel geometry from county assessor
+        const coords = parcelGeometry.map(ring =>
+          ring.map(coord => [coord[0], coord[1]] as L.LatLngTuple)
+        );
+        parcelPolygon = L.polygon(coords, {
+          color: "#fbbf24", // Gold/amber for visibility on satellite
+          weight: 4,
+          fillColor: "#fbbf24",
+          fillOpacity: 0.15,
+        }).addTo(map);
+        
+        // Fit to actual parcel bounds
+        map.fitBounds(parcelPolygon.getBounds(), { padding: [50, 50] });
+      } else {
+        // Fallback to approximate boundary
+        const parcelOffset = 0.001; // ~100m
+        const parcelCoords: L.LatLngExpression[] = [
+          [lat + parcelOffset, lng - parcelOffset],
+          [lat + parcelOffset, lng + parcelOffset],
+          [lat - parcelOffset, lng + parcelOffset],
+          [lat - parcelOffset, lng - parcelOffset],
+        ];
+        parcelPolygon = L.polygon(parcelCoords, {
+          color: "#fbbf24",
+          weight: 4,
+          fillColor: "#fbbf24",
+          fillOpacity: 0.15,
+          dashArray: "8, 4", // Dashed to indicate approximate
+        }).addTo(map);
+      }
 
       parcelPolygon.bindPopup(
         `<div class="text-sm">
@@ -131,12 +169,15 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProp
         </div>`
       );
 
+      // Zone offset for overlay zones
+      const zoneOffset = 0.001; // ~100m
+
       // Cultural/Historic Risk Zone (RED - overlapping NW corner)
       const historicZone: L.LatLngExpression[] = [
-        [lat + parcelOffset * 2, lng - parcelOffset * 2],
-        [lat + parcelOffset * 2, lng],
+        [lat + zoneOffset * 2, lng - zoneOffset * 2],
+        [lat + zoneOffset * 2, lng],
         [lat, lng],
-        [lat, lng - parcelOffset * 2],
+        [lat, lng - zoneOffset * 2],
       ];
 
       L.polygon(historicZone, {
@@ -155,10 +196,10 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProp
 
       // Water Restriction Zone (AMBER - larger area covering the parcel)
       const waterZone: L.LatLngExpression[] = [
-        [lat + parcelOffset * 3, lng - parcelOffset * 3],
-        [lat + parcelOffset * 3, lng + parcelOffset * 3],
-        [lat - parcelOffset * 3, lng + parcelOffset * 3],
-        [lat - parcelOffset * 3, lng - parcelOffset * 3],
+        [lat + zoneOffset * 3, lng - zoneOffset * 3],
+        [lat + zoneOffset * 3, lng + zoneOffset * 3],
+        [lat - zoneOffset * 3, lng + zoneOffset * 3],
+        [lat - zoneOffset * 3, lng - zoneOffset * 3],
       ];
 
       L.polygon(waterZone, {
@@ -292,7 +333,21 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProp
         mapInstanceRef.current = null;
       }
     };
-  }, [address, retryCount]);
+  }, [address, retryCount, parcelGeometry]);
+
+  // Handle layer toggle
+  const toggleMapView = () => {
+    if (!mapInstanceRef.current) return;
+    
+    if (isSatelliteView) {
+      satelliteLayerRef.current?.remove();
+      streetLayerRef.current?.addTo(mapInstanceRef.current);
+    } else {
+      streetLayerRef.current?.remove();
+      satelliteLayerRef.current?.addTo(mapInstanceRef.current);
+    }
+    setIsSatelliteView(!isSatelliteView);
+  };
 
   const handleRetry = () => {
     setIsRetrying(true);
@@ -387,6 +442,28 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded }: GISMapProp
             {wellData.summary.withinHalfMile > 0 && ` (${wellData.summary.withinHalfMile} within ½ mi)`}
           </div>
         </div>
+      )}
+
+      {/* Map View Toggle */}
+      {!isLoading && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleMapView}
+          className="absolute bottom-4 left-4 z-10 bg-background/90 backdrop-blur hover:bg-background border-border"
+        >
+          {isSatelliteView ? (
+            <>
+              <Map className="w-4 h-4 mr-2" />
+              Street View
+            </>
+          ) : (
+            <>
+              <Satellite className="w-4 h-4 mr-2" />
+              Satellite
+            </>
+          )}
+        </Button>
       )}
       
       <div 
