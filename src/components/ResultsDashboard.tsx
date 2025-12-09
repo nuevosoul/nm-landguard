@@ -149,6 +149,7 @@ interface PropertyData {
   taxYear: string;
   county: string;
   source: string;
+  parcelGeometry?: number[][][] | null;
 }
 
 interface FloodData {
@@ -936,7 +937,7 @@ onClick={() => {
                 Click zones for details
               </div>
             </div>
-            <GISMap address={address} onWellDataLoaded={handleWellDataLoaded} />
+            <GISMap address={address} onWellDataLoaded={handleWellDataLoaded} parcelGeometry={propertyData?.parcelGeometry} />
           </div>
         </section>
 

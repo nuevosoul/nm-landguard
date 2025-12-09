@@ -20,6 +20,7 @@ interface PropertyData {
   taxYear: string;
   county: string;
   source: string;
+  parcelGeometry?: number[][][] | null; // Polygon rings in lat/lng format
 }
 
 // Determine county from coordinates (simplified NM county boundaries)
@@ -49,13 +50,21 @@ function toWebMercator(lat: number, lng: number): { x: number; y: number } {
   return { x, y: yMercator };
 }
 
+// Convert Web Mercator to WGS84
+function fromWebMercator(x: number, y: number): { lat: number; lng: number } {
+  const lng = (x / 20037508.34) * 180;
+  let lat = (y / 20037508.34) * 180;
+  lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+  return { lat, lng };
+}
+
 async function queryBernalilloCounty(lat: number, lng: number): Promise<PropertyData | null> {
   console.log("Querying Bernalillo County assessor API...");
   
   try {
     const { x, y } = toWebMercator(lat, lng);
     
-    // Query the parcel layer with identify operation
+    // Query the parcel layer with geometry returned
     const baseUrl = "https://assessormap.bernco.gov/server/rest/services/Enterprise_Assessment_And_Tax/Public_Access_Parcel_Data_EAT/MapServer/0/query";
     
     const params = new URLSearchParams({
@@ -64,7 +73,7 @@ async function queryBernalilloCounty(lat: number, lng: number): Promise<Property
       geometryType: "esriGeometryPoint",
       spatialRel: "esriSpatialRelIntersects",
       outFields: "*",
-      returnGeometry: "false"
+      returnGeometry: "true" // Request geometry
     });
 
     const response = await fetch(`${baseUrl}?${params.toString()}`);
@@ -73,7 +82,20 @@ async function queryBernalilloCounty(lat: number, lng: number): Promise<Property
     console.log(`Bernalillo query returned ${data.features?.length || 0} features`);
     
     if (data.features && data.features.length > 0) {
-      const attrs = data.features[0].attributes;
+      const feature = data.features[0];
+      const attrs = feature.attributes;
+      
+      // Convert geometry from Web Mercator to WGS84
+      let parcelGeometry: number[][][] | null = null;
+      if (feature.geometry?.rings) {
+        parcelGeometry = feature.geometry.rings.map((ring: number[][]) =>
+          ring.map((coord: number[]) => {
+            const { lat, lng } = fromWebMercator(coord[0], coord[1]);
+            return [lat, lng];
+          })
+        );
+        console.log(`Parcel geometry has ${feature.geometry.rings.length} rings`);
+      }
       
       return {
         owner: attrs.OWNER || "Not available",
@@ -89,7 +111,8 @@ async function queryBernalilloCounty(lat: number, lng: number): Promise<Property
         propertyClass: attrs.PROPCLASS || "Unknown",
         taxYear: attrs.TAXYR || new Date().getFullYear().toString(),
         county: "Bernalillo County",
-        source: "Bernalillo County Assessor GIS"
+        source: "Bernalillo County Assessor GIS",
+        parcelGeometry
       };
     }
     
@@ -129,7 +152,7 @@ async function querySantaFeCounty(lat: number, lng: number): Promise<PropertyDat
       geometryType: "esriGeometryPoint",
       spatialRel: "esriSpatialRelIntersects",
       outFields: "*",
-      returnGeometry: "false"
+      returnGeometry: "true" // Request geometry
     });
 
     const response = await fetch(`${baseUrl}?${params.toString()}`);
@@ -138,7 +161,19 @@ async function querySantaFeCounty(lat: number, lng: number): Promise<PropertyDat
     console.log(`Santa Fe query returned ${data.features?.length || 0} features`);
     
     if (data.features && data.features.length > 0) {
-      const attrs = data.features[0].attributes;
+      const feature = data.features[0];
+      const attrs = feature.attributes;
+      
+      // Convert geometry from Web Mercator to WGS84
+      let parcelGeometry: number[][][] | null = null;
+      if (feature.geometry?.rings) {
+        parcelGeometry = feature.geometry.rings.map((ring: number[][]) =>
+          ring.map((coord: number[]) => {
+            const { lat, lng } = fromWebMercator(coord[0], coord[1]);
+            return [lat, lng];
+          })
+        );
+      }
       
       return {
         owner: attrs.OWNER_NAME || attrs.OWNER || "Not available",
@@ -154,7 +189,8 @@ async function querySantaFeCounty(lat: number, lng: number): Promise<PropertyDat
         propertyClass: attrs.PROPERTY_CLASS || attrs.PROP_CLASS || "Unknown",
         taxYear: attrs.TAX_YEAR || new Date().getFullYear().toString(),
         county: "Santa Fe County",
-        source: "Santa Fe County Assessor GIS"
+        source: "Santa Fe County Assessor GIS",
+        parcelGeometry
       };
     }
     
