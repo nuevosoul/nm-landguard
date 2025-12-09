@@ -35,6 +35,24 @@ export interface CulturalResourcesData {
   source: string;
 }
 
+export interface SolarData {
+  sunlightHoursPerYear: number;
+  solarPotential: "excellent" | "good" | "fair" | "poor";
+  annualSavingsEstimate: number;
+  roofAreaSqFt: number;
+  recommendedCapacityKw: number;
+  source: string;
+}
+
+export interface InfrastructureData {
+  nearestFireStation: { name: string; distance: number; isoClass?: number };
+  nearestPolice: { name: string; distance: number };
+  nearestHospital: { name: string; distance: number };
+  nearestSchool: { name: string; distance: number };
+  nearestGrocery: { name: string; distance: number };
+  source: string;
+}
+
 export interface ReportData {
   address: string;
   reportId: string;
@@ -64,6 +82,10 @@ export interface ReportData {
   satelliteMapUrl?: string;
   // Cultural Resources Data
   culturalData?: CulturalResourcesData;
+  // Solar API Data
+  solarData?: SolarData;
+  // Infrastructure API Data
+  infrastructureData?: InfrastructureData;
 }
 
 function generateGoogleStaticMapUrl(lat: number, lng: number, parcelGeometry?: number[][][] | null): string {
@@ -121,6 +143,12 @@ export function generatePDFContent(data: ReportData): string {
   
   // Generate cultural resources section
   const culturalSection = generateCulturalSection(data.culturalData, culturalConfig);
+  
+  // Generate solar section
+  const solarSection = data.solarData ? generateSolarSection(data.solarData) : '';
+  
+  // Generate infrastructure section
+  const infrastructureSection = data.infrastructureData ? generateInfrastructureSection(data.infrastructureData) : '';
   
   // Generate map section with satellite image and parcel boundary
   const mapSection = data.lat && data.lng 
@@ -570,6 +598,10 @@ export function generatePDFContent(data: ReportData): string {
       </div>
     </div>
     
+    ${solarSection}
+    
+    ${infrastructureSection}
+    
     <div class="disclaimer">
       <h4>Legal Disclaimer & Limitations</h4>
       <p>This Environmental Due Diligence Report is generated from publicly available data sources and is intended for preliminary assessment purposes only. It does not constitute a Phase I Environmental Site Assessment (ESA) under ASTM E1527-21, nor does it replace formal consultation with regulatory agencies. Data accuracy is dependent on source agency updates.</p>
@@ -577,7 +609,7 @@ export function generatePDFContent(data: ReportData): string {
     </div>
     
     <div class="footer">
-      <span>Report Version 2.1 | Rio Grande Due Diligence Platform</span>
+      <span>Report Version 2.2 | Rio Grande Due Diligence Platform</span>
       <span>License: Single-use, non-transferable</span>
     </div>
   </div>
@@ -803,6 +835,129 @@ function generateCulturalSection(
       <div class="data-source">
         <div class="data-source-title">Data Source</div>
         <div class="data-source-text">${source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateSolarSection(solarData: SolarData): string {
+  const potentialColors: Record<string, { bg: string; text: string }> = {
+    excellent: { bg: "#fef3c7", text: "#92400e" },
+    good: { bg: "#dcfce7", text: "#166534" },
+    fair: { bg: "#fef9c3", text: "#854d0e" },
+    poor: { bg: "#fee2e2", text: "#991b1b" },
+  };
+  
+  const config = potentialColors[solarData.solarPotential] || potentialColors.good;
+  
+  return `
+    <h2>Solar Development Potential</h2>
+    <div class="finding-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fef9e7 100%);">
+      <div class="finding-header">
+        <span class="finding-title">☀️ Google Solar API Analysis</span>
+        <span class="status-badge" style="background: ${config.text}; color: white; text-transform: uppercase;">${solarData.solarPotential}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 16px 0;">
+        <div style="text-align: center; padding: 16px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
+          <div style="font-size: 28px; font-weight: bold; color: #d97706;">${solarData.sunlightHoursPerYear.toLocaleString()}</div>
+          <div style="font-size: 11px; color: #92400e; text-transform: uppercase;">Hours/Year Sunlight</div>
+        </div>
+        <div style="text-align: center; padding: 16px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
+          <div style="font-size: 28px; font-weight: bold; color: #059669;">$${solarData.annualSavingsEstimate.toLocaleString()}</div>
+          <div style="font-size: 11px; color: #047857; text-transform: uppercase;">Est. Annual Savings</div>
+        </div>
+      </div>
+      <div class="finding-items">
+        <div class="finding-item">
+          <span>Solar Potential Rating</span>
+          <span style="font-weight: 600; color: ${config.text};">${solarData.solarPotential.toUpperCase()}</span>
+        </div>
+        <div class="finding-item">
+          <span>Recommended System Capacity</span>
+          <span>${solarData.recommendedCapacityKw} kW</span>
+        </div>
+        <div class="finding-item">
+          <span>Usable Roof Area</span>
+          <span>${solarData.roofAreaSqFt.toLocaleString()} sq ft</span>
+        </div>
+        <div class="finding-item">
+          <span>Annual Sunlight Hours</span>
+          <span>${solarData.sunlightHoursPerYear.toLocaleString()} hours</span>
+        </div>
+      </div>
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${solarData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateInfrastructureSection(infraData: InfrastructureData): string {
+  const getIsoClassDescription = (isoClass?: number): string => {
+    if (!isoClass || isoClass === 0) return "Not rated";
+    if (isoClass <= 3) return `Class ${isoClass} (Excellent)`;
+    if (isoClass <= 5) return `Class ${isoClass} (Good)`;
+    if (isoClass <= 7) return `Class ${isoClass} (Fair)`;
+    return `Class ${isoClass} (Limited)`;
+  };
+
+  return `
+    <h2>Infrastructure & Emergency Services</h2>
+    <div class="finding-card" style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);">
+      <div class="finding-header">
+        <span class="finding-title">🏛️ Google Places API Analysis</span>
+        <span class="status-badge" style="background: #1d4ed8; color: white;">INFRASTRUCTURE</span>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0;">
+        <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #3b82f6;">
+          <div style="font-size: 11px; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nearest Fire Station</div>
+          <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${infraData.nearestFireStation.name}</div>
+          <div style="font-size: 20px; font-weight: bold; color: #dc2626;">${infraData.nearestFireStation.distance} mi</div>
+          <div style="font-size: 11px; color: #64748b;">ISO Rating: ${getIsoClassDescription(infraData.nearestFireStation.isoClass)}</div>
+        </div>
+        <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #3b82f6;">
+          <div style="font-size: 11px; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nearest Hospital</div>
+          <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${infraData.nearestHospital.name}</div>
+          <div style="font-size: 20px; font-weight: bold; color: #059669;">${infraData.nearestHospital.distance} mi</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span>🚒 Nearest Fire Station</span>
+          <span>${infraData.nearestFireStation.distance} mi - ${infraData.nearestFireStation.name}</span>
+        </div>
+        <div class="finding-item">
+          <span>🚓 Nearest Police Station</span>
+          <span>${infraData.nearestPolice.distance} mi - ${infraData.nearestPolice.name}</span>
+        </div>
+        <div class="finding-item">
+          <span>🏥 Nearest Hospital</span>
+          <span>${infraData.nearestHospital.distance} mi - ${infraData.nearestHospital.name}</span>
+        </div>
+        <div class="finding-item">
+          <span>🏫 Nearest School</span>
+          <span>${infraData.nearestSchool.distance} mi - ${infraData.nearestSchool.name}</span>
+        </div>
+        <div class="finding-item">
+          <span>🛒 Nearest Grocery</span>
+          <span>${infraData.nearestGrocery.distance} mi - ${infraData.nearestGrocery.name}</span>
+        </div>
+      </div>
+      
+      <div style="margin-top: 12px; padding: 10px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
+        <h4 style="font-size: 11px; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">Insurance Note</h4>
+        <div style="font-size: 12px; color: #78350f;">
+          Fire insurance rates are typically influenced by proximity to fire stations and ISO fire protection class ratings. 
+          Properties within 5 road miles of a fire station generally receive better rates.
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${infraData.source}</div>
       </div>
     </div>
   `;
