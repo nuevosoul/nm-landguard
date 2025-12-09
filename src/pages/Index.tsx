@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import FeaturesGrid from "@/components/FeaturesGrid";
+import DataStatusTable from "@/components/DataStatusTable";
+import SampleReportPreview from "@/components/SampleReportPreview";
 import SocialProof from "@/components/SocialProof";
 import SearchCard from "@/components/SearchCard";
 import PaymentModal from "@/components/PaymentModal";
@@ -73,9 +74,9 @@ const Index = () => {
       <main className="pt-16">
         <HeroSection onRunReport={scrollToSearch} onViewSample={handleViewSample} />
         
-        <section id="features">
-          <FeaturesGrid />
-        </section>
+        <DataStatusTable />
+        
+        <SampleReportPreview onViewSample={handleViewSample} />
         
         <SocialProof />
         

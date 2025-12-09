@@ -63,7 +63,7 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
   };
 
   return (
-    <section className="py-28 bg-background relative" id="search">
+    <section className="py-16 bg-background relative" id="search">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-[0.015]">
         <div className="absolute inset-0" style={{

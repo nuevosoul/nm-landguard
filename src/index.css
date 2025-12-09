@@ -126,6 +126,10 @@
     font-family: 'Source Sans 3', system-ui, sans-serif;
   }
 
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
   .gradient-hero {
     background: var(--gradient-hero);
   }
