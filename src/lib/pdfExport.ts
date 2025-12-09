@@ -42,6 +42,37 @@ export interface ReportData {
   // Map coordinates
   lat?: number;
   lng?: number;
+  // Parcel geometry for satellite map
+  parcelGeometry?: number[][][] | null;
+  // Pre-generated satellite map URL (base64)
+  satelliteMapUrl?: string;
+}
+
+function generateGoogleStaticMapUrl(lat: number, lng: number, parcelGeometry?: number[][][] | null): string {
+  // Google Static Maps API with satellite imagery and parcel boundary
+  const zoom = 18;
+  const width = 640;
+  const height = 400;
+  const mapType = "satellite";
+  
+  // Base URL - note: requires API key to be passed from edge function
+  // For PDF, we'll construct the URL and the edge function will sign it
+  let url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${width}x${height}&maptype=${mapType}&scale=2`;
+  
+  // Add parcel boundary as a polygon path
+  if (parcelGeometry && parcelGeometry.length > 0 && parcelGeometry[0].length > 0) {
+    // Get the first ring (exterior boundary)
+    const ring = parcelGeometry[0];
+    // Google Static Maps uses "lat,lng" format separated by |
+    // Path format: path=color:0xFFD700|weight:3|fillcolor:0xFFD70040|lat1,lng1|lat2,lng2|...
+    const pathPoints = ring.map(coord => `${coord[0].toFixed(6)},${coord[1].toFixed(6)}`).join('|');
+    url += `&path=color:0xFFD700FF|weight:4|fillcolor:0xFFD70030|${pathPoints}`;
+  }
+  
+  // Add center marker
+  url += `&markers=color:blue|${lat},${lng}`;
+  
+  return url;
 }
 
 function generateStaticMapUrl(lat: number, lng: number, wells: WellData[] = []): string {
@@ -70,8 +101,10 @@ export function generatePDFContent(data: ReportData): string {
   // Generate well data section
   const wellSection = data.wellData ? generateWellSection(data.wellData) : '';
   
-  // Generate map section
-  const mapSection = data.lat && data.lng ? generateMapSection(data.lat, data.lng, data.wellData?.wells || []) : '';
+  // Generate map section with satellite image and parcel boundary
+  const mapSection = data.lat && data.lng 
+    ? generateMapSection(data.lat, data.lng, data.wellData?.wells || [], data.parcelGeometry, data.satelliteMapUrl) 
+    : '';
 
   return `
 <!DOCTYPE html>
@@ -564,22 +597,32 @@ export function generatePDFContent(data: ReportData): string {
 `;
 }
 
-function generateMapSection(lat: number, lng: number, wells: WellData[]): string {
+function generateMapSection(lat: number, lng: number, wells: WellData[], parcelGeometry?: number[][][] | null, satelliteMapUrl?: string): string {
+  const hasParcelBoundary = parcelGeometry && parcelGeometry.length > 0 && parcelGeometry[0].length > 0;
+  
   return `
     <div class="map-section">
       <div class="map-header">
-        <span>📍 Property Location & Nearby Water Infrastructure</span>
+        <span>📍 Property Location & Aerial View</span>
       </div>
-      <div class="map-container">
-        <div class="map-placeholder">
-          <div style="font-size: 48px; margin-bottom: 8px;">🗺️</div>
-          <div style="font-weight: 600; color: #334155;">Interactive GIS Map</div>
-          <div style="font-size: 11px;">View full report online for interactive map with OSE well locations</div>
-        </div>
+      <div class="map-container" style="background: #1a1a2e;">
+        ${satelliteMapUrl ? `
+          <img src="${satelliteMapUrl}" alt="Satellite view of property" style="width: 100%; height: auto; display: block; border-radius: 4px;" />
+        ` : `
+          <div class="map-placeholder">
+            <div style="font-size: 48px; margin-bottom: 8px;">🛰️</div>
+            <div style="font-weight: 600; color: #334155;">Satellite Imagery</div>
+            <div style="font-size: 11px;">Aerial view with parcel boundary</div>
+          </div>
+        `}
       </div>
       <div class="map-coordinates">
         <strong>Coordinates:</strong> ${lat.toFixed(6)}°N, ${Math.abs(lng).toFixed(6)}°W
+        ${hasParcelBoundary ? ' | <span style="color: #d4a54a; font-weight: 600;">◼ Parcel Boundary Shown</span>' : ' | <span style="color: #94a3b8;">Approximate location marker</span>'}
         ${wells.length > 0 ? ` | <strong>Nearby PODs:</strong> ${wells.length} within search radius` : ''}
+      </div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 4px;">
+        Imagery: Google Maps | ${hasParcelBoundary ? 'Parcel boundary from County Assessor GIS' : 'Parcel boundary not available for this county'}
       </div>
     </div>
   `;

@@ -12,6 +12,7 @@ import { downloadPDF, type ReportData, type WellData, type WellDataSummary } fro
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StatusCardProps {
   title: string;
@@ -670,7 +671,28 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                 variant="hero" 
                 size="sm" 
                 className="shadow-glow"
-onClick={() => {
+                onClick={async () => {
+                  toast.info("Generating PDF with satellite imagery...");
+                  
+                  // Fetch static satellite map with parcel boundary
+                  let satelliteMapUrl: string | undefined;
+                  if (coordinates?.lat && coordinates?.lng) {
+                    try {
+                      const { data: mapData, error: mapError } = await supabase.functions.invoke('static-map', {
+                        body: { 
+                          lat: coordinates.lat, 
+                          lng: coordinates.lng,
+                          parcelGeometry: propertyData?.parcelGeometry
+                        }
+                      });
+                      if (!mapError && mapData?.imageUrl) {
+                        satelliteMapUrl = mapData.imageUrl;
+                      }
+                    } catch (err) {
+                      console.error('Failed to fetch satellite map:', err);
+                    }
+                  }
+                  
                   const pdfData: ReportData = {
                     address: reportData.address,
                     reportId: reportData.reportId,
@@ -689,6 +711,8 @@ onClick={() => {
                     wellData: wellData || undefined,
                     lat: coordinates?.lat,
                     lng: coordinates?.lng,
+                    parcelGeometry: propertyData?.parcelGeometry,
+                    satelliteMapUrl,
                   };
                   downloadPDF(pdfData);
                   toast.success("PDF report opened for printing/download");
