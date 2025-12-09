@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.static-map]
 verify_jwt = false
+
+[functions.cultural-resources]
+verify_jwt = false
