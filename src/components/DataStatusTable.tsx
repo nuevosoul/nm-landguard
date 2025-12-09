@@ -39,15 +39,15 @@ const dataSources: DataSource[] = [
     status: "live",
   },
   {
-    agency: "EPA Envirofacts",
-    dataLayer: "Superfund & TRI Sites",
-    updateFreq: "Weekly",
+    agency: "Google Solar API",
+    dataLayer: "Solar Potential Analysis",
+    updateFreq: "Annual",
     status: "live",
   },
   {
-    agency: "USDA NRCS",
-    dataLayer: "SSURGO Soil Survey",
-    updateFreq: "Annual",
+    agency: "Google Places API",
+    dataLayer: "Infrastructure Proximity",
+    updateFreq: "Real-time",
     status: "live",
   },
 ];

@@ -142,6 +142,24 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
                             </span>
                           </td>
                         </tr>
+                        <tr className="border-t border-gray-200 bg-green-50">
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">Solar Potential</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">3,200 hrs/yr</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-100 text-amber-700">
+                              EXCELLENT
+                            </span>
+                          </td>
+                        </tr>
+                        <tr className="border-t border-gray-200 bg-green-50">
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">Emergency Services</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">Fire 2.1mi (ISO-4)</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
+                              NO CONFLICT
+                            </span>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>

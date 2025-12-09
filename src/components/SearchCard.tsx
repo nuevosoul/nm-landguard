@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, MapPin, Lock, Zap, Shield, FileText, Navigation, Loader2, Map, Crosshair } from "lucide-react";
+import { Search, MapPin, Lock, Zap, Shield, Map, Crosshair, Layers, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,13 +12,11 @@ interface SearchCardProps {
 
 const SearchCard = ({ onSearch }: SearchCardProps) => {
   const [address, setAddress] = useState("");
-  const [legalDescription, setLegalDescription] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
   const [mapCoords, setMapCoords] = useState<{ lat: string; lng: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"address" | "map">("address");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [legalCheckbox, setLegalCheckbox] = useState(false);
+  const [showSolarOverlay, setShowSolarOverlay] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -45,9 +43,29 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
     setShowSuggestions(false);
   };
 
-  const handleDropPin = () => {
-    // Simulate dropping pin at center of New Mexico
-    setMapCoords({ lat: "35.0844", lng: "-106.6504" });
+  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Calculate relative position within map container
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Map container dimensions
+    const width = rect.width;
+    const height = rect.height;
+    
+    // Convert to lat/lng (centered on Albuquerque, ~0.1 degree range)
+    const centerLat = 35.0844;
+    const centerLng = -106.6504;
+    const latRange = 0.08;
+    const lngRange = 0.12;
+    
+    const lat = centerLat + latRange * (0.5 - y / height);
+    const lng = centerLng + lngRange * (x / width - 0.5);
+    
+    setMapCoords({ 
+      lat: lat.toFixed(6), 
+      lng: lng.toFixed(6) 
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -118,9 +136,6 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
                   <TabsContent value="address" className="mt-0 space-y-3">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                      {isLoading && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin z-10" />
-                      )}
                       <Input
                         ref={inputRef}
                         type="text"
@@ -163,60 +178,116 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
                   </TabsContent>
 
                   <TabsContent value="map" className="mt-0 space-y-3">
-                    {/* Map placeholder */}
-                    <div className="relative h-48 rounded-lg border border-border overflow-hidden bg-muted/30">
-                      {/* Fake map grid */}
+                    {/* Coordinate header */}
+                    {mapCoords && (
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-primary/10 border border-primary/30">
+                        <div className="flex items-center gap-2">
+                          <Crosshair className="w-4 h-4 text-primary" />
+                          <span className="text-xs font-mono text-foreground">
+                            {mapCoords.lat}°N, {mapCoords.lng}°W
+                          </span>
+                        </div>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs h-6 px-2"
+                          onClick={() => setMapCoords(null)}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Interactive Map */}
+                    <div 
+                      className="relative h-56 rounded-lg border border-border overflow-hidden bg-muted/30 cursor-crosshair"
+                      onClick={handleMapClick}
+                    >
+                      {/* Fake satellite/map imagery */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#2a4a1a] via-[#3d5c2a] to-[#2a4a1a]" />
+                      
+                      {/* Grid overlay */}
                       <div className="absolute inset-0 opacity-20" style={{
                         backgroundImage: `
-                          linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-                          linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
+                          linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
                         `,
-                        backgroundSize: '20px 20px',
+                        backgroundSize: '30px 30px',
                       }} />
+
+                      {/* Road-like lines */}
+                      <div className="absolute top-1/2 left-0 right-0 h-px bg-yellow-600/40" />
+                      <div className="absolute top-0 bottom-0 left-1/3 w-px bg-gray-400/30" />
+                      <div className="absolute top-0 bottom-0 left-2/3 w-px bg-gray-400/30" />
                       
-                      {/* Map placeholder content */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        {mapCoords ? (
-                          <>
-                            <div className="w-8 h-8 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center animate-pulse">
-                              <Crosshair className="w-4 h-4 text-primary" />
-                            </div>
-                            <p className="text-xs text-foreground font-mono mt-2">
-                              {mapCoords.lat}°N, {mapCoords.lng}°W
-                            </p>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm" 
-                              className="mt-1 text-xs h-6"
-                              onClick={() => setMapCoords(null)}
-                            >
-                              Clear Pin
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Map className="w-10 h-10 text-muted-foreground/50 mb-2" />
-                            <p className="text-xs text-muted-foreground mb-2">Click to drop a pin on parcel center</p>
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-xs"
-                              onClick={handleDropPin}
-                            >
-                              <Crosshair className="w-3 h-3 mr-1.5" />
-                              Drop Pin on Parcel Center
-                            </Button>
-                          </>
-                        )}
+                      {/* Solar overlay (when enabled) */}
+                      {showSolarOverlay && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/30 via-orange-500/20 to-yellow-500/30 mix-blend-overlay" />
+                      )}
+                      
+                      {/* Dropped Pin */}
+                      {mapCoords && (
+                        <div 
+                          className="absolute w-6 h-6 -translate-x-1/2 -translate-y-full"
+                          style={{ 
+                            left: `${50 + (parseFloat(mapCoords.lng) + 106.6504) / 0.12 * 50}%`,
+                            top: `${50 - (parseFloat(mapCoords.lat) - 35.0844) / 0.08 * 50}%`
+                          }}
+                        >
+                          <div className="relative">
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary/50 animate-ping" />
+                            <MapPin className="w-6 h-6 text-primary fill-primary drop-shadow-lg" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Click instruction */}
+                      {!mapCoords && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center px-4 py-3 rounded-lg bg-black/50 backdrop-blur-sm">
+                            <Crosshair className="w-6 h-6 text-white/80 mx-auto mb-1" />
+                            <p className="text-xs text-white/90 font-medium">Click to drop pin</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Floating controls */}
+                      <div className="absolute top-2 right-2 flex flex-col gap-1">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className={`h-7 px-2 text-[10px] ${showSolarOverlay ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowSolarOverlay(!showSolarOverlay);
+                          }}
+                        >
+                          <Sun className="w-3 h-3 mr-1" />
+                          Solar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Layers className="w-3 h-3 mr-1" />
+                          Layers
+                        </Button>
                       </div>
 
                       {/* Map attribution */}
-                      <div className="absolute bottom-1 right-1 text-[8px] text-muted-foreground/50 font-mono">
-                        © OpenStreetMap
+                      <div className="absolute bottom-1 right-1 text-[8px] text-white/50 font-mono bg-black/30 px-1 rounded">
+                        © Google Maps
                       </div>
                     </div>
+                    
+                    <p className="text-[10px] text-muted-foreground text-center font-mono">
+                      Click anywhere on the map to select parcel location
+                    </p>
                   </TabsContent>
                   
                   {/* Legal disclaimer checkbox */}
