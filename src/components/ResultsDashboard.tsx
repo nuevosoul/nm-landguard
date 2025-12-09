@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
-import { downloadPDF, type ReportData, type WellData, type WellDataSummary } from "@/lib/pdfExport";
+import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type CulturalResourcesData as PDFCulturalData } from "@/lib/pdfExport";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
@@ -841,6 +841,14 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     }
                   }
                   
+                  // Determine cultural status from data
+                  const culturalStatus: "safe" | "caution" | "danger" = 
+                    culturalData?.riskLevel === "high" || culturalData?.onTribalLand || culturalData?.inHistoricDistrict 
+                      ? "danger" 
+                      : culturalData?.riskLevel === "moderate" || culturalData?.section106Required 
+                        ? "caution" 
+                        : "safe";
+                  
                   const pdfData: ReportData = {
                     address: reportData.address,
                     reportId: reportData.reportId,
@@ -853,7 +861,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     jurisdiction: reportData.jurisdiction,
                     county: reportData.county,
                     riskScore: riskScore,
-                    culturalStatus: "danger",
+                    culturalStatus,
                     waterStatus: "caution",
                     habitatStatus: "safe",
                     wellData: wellData || undefined,
@@ -861,6 +869,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     lng: coordinates?.lng,
                     parcelGeometry: propertyData?.parcelGeometry,
                     satelliteMapUrl,
+                    culturalData: culturalData || undefined,
                   };
                   downloadPDF(pdfData);
                   toast.success("PDF report opened for printing/download");
