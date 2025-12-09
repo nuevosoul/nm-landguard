@@ -43,7 +43,6 @@ serve(async (req) => {
     const radiusMeters = radiusMiles * 1609.34;
 
     // Build query params for ArcGIS REST API
-    // We'll query with a geometry buffer around the point
     const params = new URLSearchParams({
       where: '1=1',
       geometry: JSON.stringify({
@@ -63,25 +62,76 @@ serve(async (req) => {
 
     console.log(`OSE query URL: ${OSE_POD_URL}?${params.toString()}`);
 
-    const response = await fetch(`${OSE_POD_URL}?${params.toString()}`);
-    
-    if (!response.ok) {
-      console.error(`OSE API error: ${response.status} ${response.statusText}`);
-      throw new Error(`OSE API returned ${response.status}`);
-    }
+    // Add timeout to prevent hanging on slow government servers
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-    const data = await response.json();
+    let data;
+    try {
+      const response = await fetch(`${OSE_POD_URL}?${params.toString()}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.error(`OSE API error: ${response.status} ${response.statusText}`);
+        throw new Error(`OSE API returned ${response.status}`);
+      }
+
+      data = await response.json();
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('OSE API fetch error:', fetchError);
+      
+      // Return graceful fallback when OSE API is unavailable
+      return new Response(
+        JSON.stringify({
+          wells: [],
+          summary: {
+            totalWells: 0,
+            withinHalfMile: 0,
+            withinOneMile: 0,
+            byType: {},
+            byUse: {}
+          },
+          searchRadius: radiusMiles,
+          centerLat: lat,
+          centerLng: lng,
+          source: 'NM Office of State Engineer',
+          dataDescription: 'Points of Diversion (surface water diversions and wells)',
+          serviceStatus: 'temporarily_unavailable',
+          message: 'OSE database is temporarily unavailable. Well data will be included when service resumes.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log(`OSE API response features count: ${data.features?.length || 0}`);
 
+    // Handle OSE API error response (e.g., 503 timeout)
     if (data.error) {
       console.error('OSE API error:', data.error);
+      
+      // Return graceful fallback instead of 500 error
       return new Response(
-        JSON.stringify({ 
-          error: 'OSE service error', 
-          details: data.error.message || data.error
+        JSON.stringify({
+          wells: [],
+          summary: {
+            totalWells: 0,
+            withinHalfMile: 0,
+            withinOneMile: 0,
+            byType: {},
+            byUse: {}
+          },
+          searchRadius: radiusMiles,
+          centerLat: lat,
+          centerLng: lng,
+          source: 'NM Office of State Engineer',
+          dataDescription: 'Points of Diversion (surface water diversions and wells)',
+          serviceStatus: 'temporarily_unavailable',
+          message: 'OSE database is experiencing high load. Well data will be included when service resumes.'
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
