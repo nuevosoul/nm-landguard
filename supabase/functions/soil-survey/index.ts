@@ -24,7 +24,7 @@ interface SoilResult {
   source: string;
 }
 
-async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult | null> {
+async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult> {
   try {
     // USDA NRCS Web Soil Survey (SSURGO) API
     // Using the Soil Data Access (SDA) REST endpoint
@@ -43,15 +43,38 @@ async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult | n
 
     const response = await fetch(sdaUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: { 
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
       body: `query=${encodeURIComponent(query)}&format=JSON`,
     });
 
-    const data = await response.json();
+    // Check response status
+    if (!response.ok) {
+      console.error(`USDA API returned status: ${response.status}`);
+      return getDefaultSoilData("USDA API unavailable");
+    }
+
+    const text = await response.text();
+    
+    // Check if response is HTML/XML instead of JSON
+    if (text.trim().startsWith('<') || text.trim().startsWith('<?xml')) {
+      console.error('USDA API returned XML/HTML instead of JSON');
+      return getDefaultSoilData("USDA API returned non-JSON response");
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('Failed to parse USDA response as JSON:', parseError);
+      return getDefaultSoilData("Invalid response format");
+    }
 
     if (!data.Table || data.Table.length === 0) {
       console.log("No soil data found at location");
-      return getDefaultSoilData();
+      return getDefaultSoilData("No data at location");
     }
 
     const row = data.Table[0];
@@ -74,11 +97,24 @@ async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult | n
 
     const propsResponse = await fetch(sdaUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: { 
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
       body: `query=${encodeURIComponent(propertiesQuery)}&format=JSON`,
     });
 
-    const propsData = await propsResponse.json();
+    let propsData = { Table: [] };
+    if (propsResponse.ok) {
+      const propsText = await propsResponse.text();
+      if (!propsText.trim().startsWith('<') && !propsText.trim().startsWith('<?xml')) {
+        try {
+          propsData = JSON.parse(propsText);
+        } catch {
+          console.log('Could not parse properties response');
+        }
+      }
+    }
     
     let drainageClass = "Unknown";
     let hydrologicGroup = "Unknown";
@@ -133,11 +169,12 @@ async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult | n
     };
   } catch (error) {
     console.error("Soil survey query error:", error);
-    return getDefaultSoilData();
+    return getDefaultSoilData("Query failed");
   }
 }
 
-function getDefaultSoilData(): SoilResult {
+function getDefaultSoilData(reason: string = "No data at location"): SoilResult {
+  console.log(`Returning default soil data: ${reason}`);
   return {
     mapUnitName: "Data unavailable for location",
     mapUnitSymbol: "N/A",
@@ -154,7 +191,7 @@ function getDefaultSoilData(): SoilResult {
     erosionHazard: "Unknown",
     buildingSuitability: "fair",
     septicsuitability: "fair",
-    source: "USDA NRCS - No data at location",
+    source: `USDA NRCS - ${reason}`,
   };
 }
 
@@ -228,22 +265,17 @@ serve(async (req) => {
 
     const result = await querySoilSurvey(lat, lng);
 
-    if (!result) {
-      return new Response(
-        JSON.stringify({ error: "Failed to retrieve soil data" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    // Always return a result (function now always returns default instead of null)
     return new Response(
       JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in soil-survey function:", error);
+    // Return default result on any error
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify(getDefaultSoilData("Request processing error")),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
