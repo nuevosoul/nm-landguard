@@ -8,7 +8,7 @@ interface HeroSectionProps {
 
 const HeroSection = ({ onRunReport, onViewSample }: HeroSectionProps) => {
   return (
-    <section className="relative min-h-[70vh] flex items-center justify-center gradient-hero overflow-hidden pt-16">
+    <section className="relative min-h-[60vh] flex items-center justify-center gradient-hero overflow-hidden pt-14">
       {/* Subtle grid pattern */}
       <div className="absolute inset-0 opacity-[0.02]">
         <div className="absolute inset-0" style={{
