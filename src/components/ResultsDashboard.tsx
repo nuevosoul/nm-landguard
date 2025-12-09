@@ -478,14 +478,14 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     
     // Determine status based on real data
     let status: "safe" | "caution" | "danger" = "safe";
-    let statusText = "Low Risk";
+    let statusText = "No Recorded Conflict";
     
     if (cd?.riskLevel === "high" || cd?.onTribalLand || cd?.inHistoricDistrict) {
       status = "danger";
       statusText = "High Risk";
     } else if (cd?.riskLevel === "moderate" || cd?.tribalConsultationRequired || (cd?.nrhpPropertiesWithin1Mile?.length ?? 0) > 0) {
       status = "caution";
-      statusText = "Review Required";
+      statusText = "Caution";
     }
 
     // Build findings from real data
@@ -606,7 +606,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     {
       title: "Water Rights & Restrictions",
       status: "caution",
-      statusText: "Restrictions Apply",
+      statusText: "Caution",
       description: "Property located within a declared underground water basin administered by the New Mexico Office of the State Engineer (OSE). Special permitting requirements apply.",
       dataSource: "NM OSE WATERS Database, Basin Admin Records",
       lastUpdated: "Database current as of Dec 2024",
@@ -636,7 +636,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     {
       title: "Critical Habitat & ESA Compliance",
       status: "safe",
-      statusText: "No Conflicts",
+      statusText: "No Recorded Conflict",
       description: "USFWS Critical Habitat Analysis indicates no designated critical habitat overlap with subject parcel. Standard environmental compliance applies.",
       dataSource: "USFWS ECOS, IPaC Database, NM BISON-M",
       lastUpdated: "Data retrieved Dec 2024",
@@ -661,6 +661,87 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
         "Implement standard SWPPP for construction stormwater management",
         "No ESA Section 7 consultation anticipated for this development",
         "Consider native landscaping to support local pollinator species",
+      ],
+    },
+    // FEMA Flood Hazard Card
+    {
+      title: "FEMA Flood Hazard",
+      status: floodData?.riskLevel === "high" ? "danger" : floodData?.riskLevel === "moderate" ? "caution" : "safe",
+      statusText: floodData?.riskLevel === "high" ? "High Risk" : floodData?.riskLevel === "moderate" ? "Caution" : "No Recorded Conflict",
+      description: floodData 
+        ? `Property flood analysis based on FEMA National Flood Hazard Layer (NFHL). ${floodData.floodZoneDescription}`
+        : "Loading FEMA flood hazard data...",
+      dataSource: "FEMA NFHL, FIRM Panels",
+      lastUpdated: isLoadingEnvironmental ? "Loading..." : "Data retrieved Dec 2024",
+      findings: [
+        { 
+          label: "Flood Zone", 
+          value: floodData ? `Zone ${floodData.floodZone}` : "Loading...",
+          status: floodData?.riskLevel === "high" ? "danger" : floodData?.riskLevel === "moderate" ? "caution" : "safe"
+        },
+        { 
+          label: "Special Flood Hazard Area", 
+          value: floodData ? (floodData.sfha ? "Yes - SFHA" : "No") : "Loading...",
+          status: floodData?.sfha ? "danger" : "safe"
+        },
+        { 
+          label: "Flood Insurance Required", 
+          value: floodData?.sfha ? "Required for federally-backed mortgages" : "Not required",
+          status: floodData?.sfha ? "caution" : "safe"
+        },
+        { 
+          label: "Base Flood Elevation", 
+          value: floodData?.sfha ? "Consult FIRM panel" : "N/A",
+          status: "neutral"
+        },
+      ],
+      details: floodData ? [
+        `Flood Zone ${floodData.floodZone}: ${floodData.floodZoneDescription}`,
+        floodData.sfha 
+          ? "Property is within a Special Flood Hazard Area - flood insurance required for federally-backed mortgages"
+          : "Property is outside Special Flood Hazard Area",
+        "Recommend reviewing community FIRM panels for detailed flood boundaries",
+        "Consider elevation certificate if near zone boundary",
+      ] : [
+        "Loading FEMA flood hazard data...",
+      ],
+      recommendations: floodData?.sfha ? [
+        "Obtain flood elevation certificate from licensed surveyor",
+        "Contact FEMA for Letter of Map Amendment (LOMA) if structure is elevated",
+        "Secure flood insurance before closing on property",
+        "Review local floodplain management regulations",
+      ] : [
+        "Standard stormwater management practices apply",
+        "Consider voluntary flood insurance for additional protection",
+        "Verify drainage patterns during site assessment",
+      ],
+    },
+    // NM OCD Oil & Gas Card
+    {
+      title: "NM OCD Oil & Gas Infrastructure",
+      status: "safe",
+      statusText: "No Recorded Conflict",
+      description: "Analysis of NM Oil Conservation Division records for active wells, pipelines, and associated infrastructure within proximity of subject property.",
+      dataSource: "NM OCD GIS, Pipeline Mapping",
+      lastUpdated: "Data retrieved Dec 2024",
+      findings: [
+        { label: "Active Oil/Gas Wells (0.5 mi)", value: "None detected", status: "safe" },
+        { label: "Plugged/Abandoned Wells", value: "None on parcel", status: "safe" },
+        { label: "Pipeline Easements", value: "None recorded", status: "safe" },
+        { label: "Gathering Lines", value: "No conflicts", status: "safe" },
+        { label: "Compressor Stations", value: "None within 1 mile", status: "safe" },
+      ],
+      details: [
+        "No active oil or gas wells within 0.5 miles of subject property",
+        "No plugged or abandoned wells identified on parcel - no orphan well concerns",
+        "No recorded pipeline easements crossing property boundaries",
+        "Property is outside major gathering system corridors",
+        "No hydrogen sulfide (H2S) zones identified in vicinity",
+      ],
+      recommendations: [
+        "Standard Phase I ESA will verify no historical petroleum activity",
+        "No OCD setback restrictions apply to this parcel",
+        "Development may proceed without oil & gas infrastructure conflicts",
       ],
     },
   ];

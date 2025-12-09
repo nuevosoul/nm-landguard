@@ -7,14 +7,14 @@ interface SampleReportPreviewProps {
 
 const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
   return (
-    <section className="py-12 bg-muted/20 relative" id="output-preview">
+    <section className="py-8 bg-muted/20 relative" id="output-preview">
       <div className="container mx-auto px-4">
         {/* Section header */}
-        <div className="text-center mb-8">
-          <h2 className="font-display text-2xl font-semibold text-foreground tracking-tight mb-2">
+        <div className="text-center mb-5">
+          <h2 className="font-display text-xl font-semibold text-foreground tracking-tight mb-1">
             Output Preview
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Standardized Pre-Compliance Desktop Review
           </p>
         </div>
@@ -97,30 +97,48 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
                       </thead>
                       <tbody>
                         <tr className="border-t border-gray-200 bg-red-50">
-                          <td className="px-3 py-2 text-gray-900">Cultural Resources</td>
-                          <td className="px-3 py-2 text-gray-600 font-mono">Sandia Pueblo 0.8mi</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">
-                              <AlertTriangle className="w-2.5 h-2.5" />
-                              HIGH
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">Cultural Resources</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">Sandia Pueblo 0.8mi</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-100 text-red-700">
+                              <AlertTriangle className="w-2 h-2" />
+                              HIGH RISK
                             </span>
                           </td>
                         </tr>
                         <tr className="border-t border-gray-200 bg-yellow-50">
-                          <td className="px-3 py-2 text-gray-900">Water Rights</td>
-                          <td className="px-3 py-2 text-gray-600 font-mono">Declared Basin (1956)</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-yellow-100 text-yellow-700">
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">Water Rights</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">Declared Basin (1956)</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-yellow-100 text-yellow-700">
                               CAUTION
                             </span>
                           </td>
                         </tr>
                         <tr className="border-t border-gray-200 bg-green-50">
-                          <td className="px-3 py-2 text-gray-900">Critical Habitat</td>
-                          <td className="px-3 py-2 text-gray-600 font-mono">No overlap detected</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
-                              CLEAR
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">Critical Habitat</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">No overlap detected</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
+                              NO CONFLICT
+                            </span>
+                          </td>
+                        </tr>
+                        <tr className="border-t border-gray-200 bg-green-50">
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">FEMA Flood Hazard</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">Zone X (Minimal)</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
+                              NO CONFLICT
+                            </span>
+                          </td>
+                        </tr>
+                        <tr className="border-t border-gray-200 bg-green-50">
+                          <td className="px-2 py-1.5 text-gray-900 text-[10px]">Oil & Gas Infrastructure</td>
+                          <td className="px-2 py-1.5 text-gray-600 font-mono text-[10px]">No wells/pipelines</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
+                              NO CONFLICT
                             </span>
                           </td>
                         </tr>
