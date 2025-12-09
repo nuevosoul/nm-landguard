@@ -199,6 +199,22 @@ interface SoilData {
   source: string;
 }
 
+interface CulturalResourcesData {
+  nearestTribalLand: { name: string; type: string; distance: number } | null;
+  tribalLandsWithin5Miles: { name: string; type: string; distance: number }[];
+  onTribalLand: boolean;
+  tribalConsultationRequired: boolean;
+  tribalConsultationReason: string;
+  nrhpPropertiesWithin1Mile: { name: string; refNumber: string; distance: number; resourceType: string }[];
+  nearestNRHPProperty: { name: string; distance: number } | null;
+  inHistoricDistrict: boolean;
+  historicDistrictName: string | null;
+  riskLevel: "high" | "moderate" | "low";
+  section106Required: boolean;
+  recommendedActions: string[];
+  source: string;
+}
+
 const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboardProps) => {
   const [plssData, setPlssData] = useState<PLSSResult | null>(null);
   const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
@@ -214,7 +230,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [epaData, setEpaData] = useState<EPAData | null>(null);
   const [elevationData, setElevationData] = useState<ElevationData | null>(null);
   const [soilData, setSoilData] = useState<SoilData | null>(null);
+  const [culturalData, setCulturalData] = useState<CulturalResourcesData | null>(null);
   const [isLoadingEnvironmental, setIsLoadingEnvironmental] = useState(false);
+  const [isLoadingCultural, setIsLoadingCultural] = useState(false);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -338,6 +356,33 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Fetch cultural resources data (Tribal lands, NRHP)
+  const fetchCulturalData = async (lat: number, lng: number) => {
+    setIsLoadingCultural(true);
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    try {
+      const response = await fetch(`${baseUrl}/functions/v1/cultural-resources`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ lat, lng }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.error) {
+          setCulturalData(data);
+          console.log("Cultural resources data loaded:", data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching cultural data:", error);
+    } finally {
+      setIsLoadingCultural(false);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
     const fetchAllPropertyData = async () => {
@@ -356,6 +401,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           // Fetch all data in parallel
           fetchPropertyLookup(geocodeResult.lat, geocodeResult.lng);
           fetchEnvironmentalData(geocodeResult.lat, geocodeResult.lng);
+          fetchCulturalData(geocodeResult.lat, geocodeResult.lng);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -426,35 +472,137 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   // Calculate overall risk score
   const riskScore = 68; // Out of 100, higher = more risk
 
-  const statusCards: StatusCardProps[] = [
-    {
+  // Build Cultural Resources status card based on real data
+  const getCulturalResourcesCard = (): StatusCardProps => {
+    const cd = culturalData;
+    
+    // Determine status based on real data
+    let status: "safe" | "caution" | "danger" = "safe";
+    let statusText = "Low Risk";
+    
+    if (cd?.riskLevel === "high" || cd?.onTribalLand || cd?.inHistoricDistrict) {
+      status = "danger";
+      statusText = "High Risk";
+    } else if (cd?.riskLevel === "moderate" || cd?.tribalConsultationRequired || (cd?.nrhpPropertiesWithin1Mile?.length ?? 0) > 0) {
+      status = "caution";
+      statusText = "Review Required";
+    }
+
+    // Build findings from real data
+    const findings: FindingItem[] = [];
+    
+    // Tribal land findings
+    if (cd?.onTribalLand) {
+      findings.push({ label: "On Tribal Land", value: `Yes - ${cd.nearestTribalLand?.name || "Tribal land"}`, status: "danger" });
+    } else if (cd?.nearestTribalLand) {
+      const dist = cd.nearestTribalLand.distance;
+      findings.push({ 
+        label: `Nearest ${cd.nearestTribalLand.type || "Tribal Land"}`, 
+        value: `${cd.nearestTribalLand.name} (${dist.toFixed(2)} mi)`, 
+        status: dist < 1 ? "danger" : dist < 3 ? "caution" : "safe" 
+      });
+    }
+    
+    // Tribal consultation
+    findings.push({ 
+      label: "Tribal Consultation Required", 
+      value: cd?.tribalConsultationRequired ? "Yes" : "No", 
+      status: cd?.tribalConsultationRequired ? "danger" : "safe" 
+    });
+    
+    // Historic district
+    if (cd?.inHistoricDistrict) {
+      findings.push({ label: "In Historic District", value: cd.historicDistrictName || "Yes", status: "danger" });
+    }
+    
+    // NRHP properties
+    const nrhpCount = cd?.nrhpPropertiesWithin1Mile?.length ?? 0;
+    findings.push({ 
+      label: "NRHP Properties (1 mi)", 
+      value: nrhpCount > 0 ? `${nrhpCount} listed` : "None found", 
+      status: nrhpCount > 0 ? "caution" : "safe" 
+    });
+    
+    // Nearest NRHP property
+    if (cd?.nearestNRHPProperty) {
+      findings.push({ 
+        label: "Nearest NRHP Property", 
+        value: `${cd.nearestNRHPProperty.distance.toFixed(2)} mi`, 
+        status: cd.nearestNRHPProperty.distance < 0.25 ? "danger" : "caution" 
+      });
+    }
+    
+    // Section 106
+    findings.push({ 
+      label: "Section 106 Review", 
+      value: cd?.section106Required ? "Required" : "Not Required", 
+      status: cd?.section106Required ? "caution" : "safe" 
+    });
+
+    // Build details
+    const details: string[] = [];
+    
+    if (cd?.onTribalLand) {
+      details.push(`Property is located ON ${cd.nearestTribalLand?.name || "tribal"} land - development requires tribal government approval`);
+    } else if (cd?.nearestTribalLand) {
+      details.push(`Nearest tribal land: ${cd.nearestTribalLand.name} (${cd.nearestTribalLand.type}) - ${cd.nearestTribalLand.distance.toFixed(2)} miles away`);
+    }
+    
+    if ((cd?.tribalLandsWithin5Miles?.length ?? 0) > 1) {
+      const names = cd!.tribalLandsWithin5Miles.slice(0, 3).map(t => t.name).join(", ");
+      details.push(`${cd!.tribalLandsWithin5Miles.length} tribal lands within 5 miles: ${names}`);
+    }
+    
+    if (cd?.inHistoricDistrict) {
+      details.push(`Property is within ${cd.historicDistrictName} - SHPO review required for any exterior modifications`);
+    }
+    
+    if (cd?.nrhpPropertiesWithin1Mile && cd.nrhpPropertiesWithin1Mile.length > 0) {
+      const nearest = cd.nrhpPropertiesWithin1Mile[0];
+      details.push(`Nearest NRHP property: ${nearest.name} (Ref: ${nearest.refNumber}) - ${nearest.distance.toFixed(2)} miles`);
+      
+      if (cd.nrhpPropertiesWithin1Mile.length > 1) {
+        details.push(`${cd.nrhpPropertiesWithin1Mile.length - 1} additional NRHP properties within 1 mile`);
+      }
+    }
+    
+    if (cd?.tribalConsultationReason) {
+      details.push(cd.tribalConsultationReason);
+    }
+
+    // Default details if no data
+    if (details.length === 0) {
+      details.push("Cultural resources data is being loaded or unavailable for this location");
+      details.push("Recommend requesting ARMS records check from NM Historic Preservation Division");
+    }
+
+    // Use real recommendations or defaults
+    const recommendations = cd?.recommendedActions && cd.recommendedActions.length > 0 
+      ? cd.recommendedActions 
+      : [
+          "Request ARMS records check from NM Historic Preservation Division",
+          "Consider Phase I Archaeological Survey if any ground disturbance planned",
+        ];
+
+    return {
       title: "Cultural Resources Assessment",
-      status: "danger",
-      statusText: "High Risk",
-      description: "Analysis of NMCRIS (New Mexico Cultural Resources Information System) records indicates proximity to registered historic and archaeological resources.",
-      dataSource: "NMCRIS Database, NM SHPO Records, NRHP Registry",
-      lastUpdated: "Database current as of Dec 2024",
-      findings: [
-        { label: "Historic District Proximity", value: "0.47 miles", status: "danger" },
-        { label: "Registered Archaeological Sites", value: "2 within 1 mile", status: "danger" },
-        { label: "NRHP Listed Properties", value: "1 adjacent", status: "caution" },
-        { label: "Previous Cultural Surveys", value: "None on record", status: "caution" },
-        { label: "Tribal Consultation Required", value: "Yes - Pueblo lands nearby", status: "danger" },
+      status,
+      statusText,
+      description: cd 
+        ? `Analysis of BIA tribal land boundaries and National Register of Historic Places data for proximity to culturally significant resources.`
+        : "Loading cultural resources data from federal databases...",
+      dataSource: cd?.source || "BIA AIAN Land Areas, NPS NRHP",
+      lastUpdated: isLoadingCultural ? "Loading..." : "Real-time federal data",
+      findings: findings.length > 0 ? findings : [
+        { label: "Status", value: isLoadingCultural ? "Loading..." : "Data unavailable", status: "neutral" as const }
       ],
-      details: [
-        "LA #45892 - Prehistoric habitation site (Pueblo II-III period) located 0.3 miles northwest",
-        "Property lies within the Albuquerque Old Town Historic District buffer zone",
-        "No Phase I archaeological survey on file for this parcel",
-        "Adjacent property (NE) listed on National Register of Historic Places",
-        "Area identified as archaeologically sensitive by ARMS predictive model",
-      ],
-      recommendations: [
-        "Commission Phase I Archaeological Survey before any ground disturbance",
-        "Submit NMCRIS Project ID application to SHPO prior to development",
-        "Initiate tribal consultation with nearby Pueblos per NHPA Section 106",
-        "Consider historic architectural review if within viewshed of NRHP property",
-      ],
-    },
+      details,
+      recommendations,
+    };
+  };
+
+  const statusCards: StatusCardProps[] = [
+    getCulturalResourcesCard(),
     {
       title: "Water Rights & Restrictions",
       status: "caution",
