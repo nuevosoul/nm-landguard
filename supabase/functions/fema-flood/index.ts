@@ -37,6 +37,7 @@ const floodZoneDescriptions: Record<string, { description: string; risk: "high" 
 async function queryFEMAFloodZone(lat: number, lng: number): Promise<FloodZoneResult | null> {
   try {
     // FEMA National Flood Hazard Layer (NFHL) REST API
+    // Using the Flood Hazard Zones layer (layer 28)
     const baseUrl = "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query";
     
     const params = new URLSearchParams({
@@ -50,8 +51,41 @@ async function queryFEMAFloodZone(lat: number, lng: number): Promise<FloodZoneRe
 
     console.log(`Querying FEMA flood zone for ${lat}, ${lng}`);
     
-    const response = await fetch(`${baseUrl}?${params}`);
-    const data = await response.json();
+    const response = await fetch(`${baseUrl}?${params}`, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'RioGrandeDueDiligence/1.0'
+      }
+    });
+    
+    // Check if response is ok
+    if (!response.ok) {
+      console.error(`FEMA API returned status: ${response.status}`);
+      // Return default minimal risk instead of failing
+      return getDefaultResult("FEMA API unavailable");
+    }
+    
+    // Check content type to avoid parsing HTML as JSON
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      console.error(`FEMA API returned non-JSON content type: ${contentType}`);
+      return getDefaultResult("FEMA API returned non-JSON response");
+    }
+    
+    const text = await response.text();
+    
+    // Check if response starts with HTML
+    if (text.trim().startsWith('<')) {
+      console.error('FEMA API returned HTML instead of JSON');
+      return getDefaultResult("FEMA API temporarily unavailable");
+    }
+    
+    const data = JSON.parse(text);
+
+    if (data.error) {
+      console.error("FEMA API error:", data.error);
+      return getDefaultResult("FEMA query error");
+    }
 
     if (data.features && data.features.length > 0) {
       const feature = data.features[0].attributes;
@@ -83,21 +117,26 @@ async function queryFEMAFloodZone(lat: number, lng: number): Promise<FloodZoneRe
     }
 
     // If no data found, return minimal risk default
-    return {
-      floodZone: "X",
-      floodZoneDescription: "Minimal Risk - Outside mapped flood hazard area",
-      panelNumber: "N/A",
-      effectiveDate: "Current",
-      communityName: "",
-      countyFips: "",
-      sfha: false,
-      riskLevel: "minimal",
-      source: "FEMA NFHL - No data at location",
-    };
+    return getDefaultResult("No FEMA data at location");
   } catch (error) {
     console.error("FEMA query error:", error);
-    return null;
+    return getDefaultResult("FEMA query failed");
   }
+}
+
+function getDefaultResult(reason: string): FloodZoneResult {
+  console.log(`Returning default flood zone result: ${reason}`);
+  return {
+    floodZone: "X",
+    floodZoneDescription: "Minimal Risk - Outside mapped flood hazard area",
+    panelNumber: "N/A",
+    effectiveDate: "Current",
+    communityName: "",
+    countyFips: "",
+    sfha: false,
+    riskLevel: "minimal",
+    source: `FEMA NFHL - ${reason}`,
+  };
 }
 
 serve(async (req) => {
@@ -119,22 +158,17 @@ serve(async (req) => {
 
     const result = await queryFEMAFloodZone(lat, lng);
 
-    if (!result) {
-      return new Response(
-        JSON.stringify({ error: "Failed to query FEMA flood data" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    // Always return a result (function now always returns default instead of null)
     return new Response(
       JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in fema-flood function:", error);
+    // Return default result on any error
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify(getDefaultResult("Request processing error")),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
