@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
-import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type CulturalResourcesData as PDFCulturalData } from "@/lib/pdfExport";
+import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type CulturalResourcesData as PDFCulturalData, type SolarData as PDFSolarData, type InfrastructureData as PDFInfraData } from "@/lib/pdfExport";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
@@ -1059,6 +1059,22 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     parcelGeometry: propertyData?.parcelGeometry,
                     satelliteMapUrl,
                     culturalData: culturalData || undefined,
+                    solarData: solarData ? {
+                      sunlightHoursPerYear: solarData.sunlightHoursPerYear,
+                      solarPotential: solarData.solarPotential,
+                      annualSavingsEstimate: solarData.annualSavingsEstimate,
+                      roofAreaSqFt: solarData.roofAreaSqFt,
+                      recommendedCapacityKw: solarData.recommendedCapacityKw,
+                      source: solarData.source,
+                    } : undefined,
+                    infrastructureData: infrastructureData ? {
+                      nearestFireStation: infrastructureData.nearestFireStation,
+                      nearestPolice: infrastructureData.nearestPolice,
+                      nearestHospital: infrastructureData.nearestHospital,
+                      nearestSchool: infrastructureData.nearestSchool,
+                      nearestGrocery: infrastructureData.nearestGrocery,
+                      source: infrastructureData.source,
+                    } : undefined,
                   };
                   downloadPDF(pdfData);
                   toast.success("PDF report opened for printing/download");
