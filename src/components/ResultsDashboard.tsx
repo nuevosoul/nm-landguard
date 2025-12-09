@@ -62,7 +62,7 @@ const StatusCard = ({ title, status, statusText, statusTooltip, description, det
   const Icon = config.icon;
 
   return (
-    <div className={`relative p-5 rounded-xl bg-card border ${config.borderClass} shadow-card`}>
+    <div className={`relative p-5 rounded-xl border border-white/10 bg-card/90 backdrop-blur-[10px] ${config.borderClass}`} style={{ boxShadow: '0 0 20px rgba(56, 189, 248, 0.1), 0 4px 20px -4px rgba(0, 0, 0, 0.5)' }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="relative">

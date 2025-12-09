@@ -112,8 +112,8 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
 
       <div className="container mx-auto px-4 relative">
         <div className="max-w-2xl mx-auto">
-          {/* Card */}
-          <div className="relative rounded-xl border border-border bg-card shadow-elevated overflow-hidden">
+          {/* Card - Glassmorphism */}
+          <div className="relative rounded-xl border border-white/10 bg-card/90 backdrop-blur-[10px] shadow-elevated overflow-hidden" style={{ boxShadow: '0 0 30px rgba(56, 189, 248, 0.08), 0 4px 20px -4px rgba(0, 0, 0, 0.5)' }}>
             {/* Top gold accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
             

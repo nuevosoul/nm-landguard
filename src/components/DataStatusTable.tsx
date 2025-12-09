@@ -122,7 +122,14 @@ const DataStatusTable = () => {
                     <td className="px-2 py-1.5 text-[10px] text-muted-foreground font-mono hidden sm:table-cell">{source.updateFreq}</td>
                     <td className="px-2 py-1.5 text-center">
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${config.color}`}>
-                        <Circle className={`w-1 h-1 fill-current ${source.status === 'live' ? 'animate-pulse' : ''}`} />
+                        {source.status === 'live' ? (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-current"></span>
+                          </span>
+                        ) : (
+                          <Circle className="w-1.5 h-1.5 fill-current" />
+                        )}
                         {config.label}
                       </span>
                     </td>
