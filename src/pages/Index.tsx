@@ -10,6 +10,7 @@ import PaymentModal from "@/components/PaymentModal";
 import LoadingState from "@/components/LoadingState";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import Footer from "@/components/Footer";
+import SystemStatusTicker from "@/components/SystemStatusTicker";
 
 type AppState = "landing" | "payment" | "loading" | "results" | "sample";
 type QueryType = "address" | "legal" | "coordinates";
@@ -70,9 +71,10 @@ const Index = () => {
   // Landing page
   return (
     <div className="min-h-screen bg-background">
+      <SystemStatusTicker />
       <Navbar onRunReport={scrollToSearch} />
       
-      <main className="pt-16">
+      <main className="pt-[88px]">
         <HeroSection onRunReport={scrollToSearch} onViewSample={handleViewSample} />
         
         <DataStatusTable />

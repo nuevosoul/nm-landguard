@@ -37,6 +37,8 @@ export interface CulturalResourcesData {
 
 export interface SolarData {
   sunlightHoursPerYear: number;
+  maxArrayPanelsCount?: number;
+  maxArrayAreaMeters2?: number;
   solarPotential: "excellent" | "good" | "fair" | "poor";
   annualSavingsEstimate: number;
   roofAreaSqFt: number;
@@ -75,19 +77,28 @@ export interface EPAData {
 
 export interface ReportData {
   address: string;
-  reportId: string;
+  reportId?: string;
   generatedAt: string;
   validUntil: string;
   parcelId: string;
   legalDescription: string;
   acreage: string;
   zoning: string;
-  jurisdiction: string;
-  county: string;
-  riskScore: number;
-  culturalStatus: "safe" | "caution" | "danger";
-  waterStatus: "safe" | "caution" | "danger";
-  habitatStatus: "safe" | "caution" | "danger";
+  jurisdiction?: string;
+  county?: string;
+  riskScore?: number;
+  culturalStatus?: "safe" | "caution" | "danger";
+  waterStatus?: "safe" | "caution" | "danger";
+  habitatStatus?: "safe" | "caution" | "danger";
+  // Owner info
+  owner?: string;
+  ownerAddress?: string;
+  dataSource?: string;
+  landValue?: number;
+  improvementValue?: number;
+  totalValue?: number;
+  taxYear?: string;
+  coordinates?: { lat: number; lng: number } | null;
   // OSE Well Data
   wellData?: {
     wells: WellData[];

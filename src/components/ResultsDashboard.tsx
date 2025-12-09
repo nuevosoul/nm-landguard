@@ -13,6 +13,10 @@ import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
 import { supabase } from "@/integrations/supabase/client";
+import RiskRadarChart from "./RiskRadarChart";
+import ExportPackage from "./ExportPackage";
+import MapLayerControl from "./MapLayerControl";
+import SystemStatusTicker from "./SystemStatusTicker";
 
 interface StatusCardProps {
   title: string;
@@ -1349,25 +1353,113 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           </div>
         </section>
 
-        {/* Interactive Map */}
-        <section className="mb-10">
-          <div className="rounded-xl bg-card border border-border overflow-hidden shadow-card">
-            <div className="p-5 border-b border-border flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Map className="w-4 h-4 text-primary" />
+        {/* Interactive Map & Risk Radar */}
+        <section className="mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Map - 2/3 width */}
+            <div className="lg:col-span-2 rounded-lg bg-card border border-border overflow-hidden">
+              <div className="p-3 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                    <Map className="w-3 h-3 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-mono font-bold text-foreground uppercase tracking-wider">GIS Spatial Analysis</h2>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-display text-lg font-semibold text-foreground">GIS Spatial Analysis</h2>
-                  <p className="text-xs text-muted-foreground">Interactive risk zone visualization</p>
+                <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                  <Info className="w-3 h-3" />
+                  Click zones for details
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Info className="w-3 h-3" />
-                Click zones for details
+              <div className="relative">
+                <MapLayerControl />
+                <GISMap address={address} onWellDataLoaded={handleWellDataLoaded} parcelGeometry={propertyData?.parcelGeometry} />
               </div>
             </div>
-            <GISMap address={address} onWellDataLoaded={handleWellDataLoaded} parcelGeometry={propertyData?.parcelGeometry} />
+            
+            {/* Risk Radar & Export - 1/3 width */}
+            <div className="space-y-4">
+              <RiskRadarChart 
+                riskData={{
+                  historic: culturalData?.riskLevel === "high" ? 85 : culturalData?.riskLevel === "moderate" ? 55 : 20,
+                  water: 55,
+                  bio: 15,
+                  flood: floodData?.riskLevel === "high" ? 80 : floodData?.riskLevel === "moderate" ? 50 : 15,
+                  slope: elevationData?.slope ? Math.min(elevationData.slope * 10, 100) : 25,
+                  soil: soilData?.buildingSuitability === "Poor" ? 70 : soilData?.buildingSuitability === "Moderate" ? 45 : 20,
+                  fire: 35,
+                }}
+              />
+              <ExportPackage 
+                onExportPDF={() => {
+                  const pdfData: ReportData = {
+                    address: reportData.address,
+                    parcelId: reportData.parcelId,
+                    legalDescription: reportData.legalDescription,
+                    acreage: reportData.acreage,
+                    zoning: reportData.zoning,
+                    owner: reportData.owner,
+                    ownerAddress: reportData.ownerAddress,
+                    generatedAt: reportData.generatedAt,
+                    validUntil: reportData.validUntil,
+                    dataSource: reportData.dataSource,
+                    landValue: reportData.landValue,
+                    improvementValue: reportData.improvementValue,
+                    totalValue: reportData.totalValue,
+                    taxYear: reportData.taxYear,
+                    coordinates,
+                    wellData: wellData || undefined,
+                    culturalData: culturalData ? {
+                      nearestTribalLand: culturalData.nearestTribalLand,
+                      tribalLandsWithin5Miles: culturalData.tribalLandsWithin5Miles,
+                      onTribalLand: culturalData.onTribalLand,
+                      tribalConsultationRequired: culturalData.tribalConsultationRequired,
+                      tribalConsultationReason: culturalData.tribalConsultationReason,
+                      nrhpPropertiesWithin1Mile: culturalData.nrhpPropertiesWithin1Mile,
+                      nearestNRHPProperty: culturalData.nearestNRHPProperty,
+                      inHistoricDistrict: culturalData.inHistoricDistrict,
+                      historicDistrictName: culturalData.historicDistrictName,
+                      riskLevel: culturalData.riskLevel,
+                      section106Required: culturalData.section106Required,
+                      recommendedActions: culturalData.recommendedActions,
+                      source: culturalData.source,
+                    } : undefined,
+                    solarData: solarData ? {
+                      sunlightHoursPerYear: solarData.sunlightHoursPerYear,
+                      maxArrayPanelsCount: solarData.maxArrayPanelsCount,
+                      maxArrayAreaMeters2: solarData.maxArrayAreaMeters2,
+                      solarPotential: solarData.solarPotential,
+                      annualSavingsEstimate: solarData.annualSavingsEstimate,
+                      roofAreaSqFt: solarData.roofAreaSqFt,
+                      recommendedCapacityKw: solarData.recommendedCapacityKw,
+                      source: solarData.source,
+                    } : undefined,
+                    infrastructureData: infrastructureData ? {
+                      nearestFireStation: infrastructureData.nearestFireStation,
+                      nearestPolice: infrastructureData.nearestPolice,
+                      nearestHospital: infrastructureData.nearestHospital,
+                      nearestSchool: infrastructureData.nearestSchool,
+                      nearestGrocery: infrastructureData.nearestGrocery,
+                      source: infrastructureData.source,
+                    } : undefined,
+                    floodData: floodData ? {
+                      floodZone: floodData.floodZone,
+                      floodZoneDescription: floodData.floodZoneDescription,
+                      sfha: floodData.sfha,
+                      riskLevel: floodData.riskLevel,
+                      source: floodData.source,
+                    } : undefined,
+                    epaData: epaData ? {
+                      summary: epaData.summary,
+                      source: epaData.source,
+                    } : undefined,
+                  };
+                  downloadPDF(pdfData);
+                  toast.success("PDF report opened for printing/download");
+                }}
+              />
+            </div>
           </div>
         </section>
 
