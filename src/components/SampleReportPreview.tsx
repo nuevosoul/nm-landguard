@@ -68,15 +68,22 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
                   </div>
                 </div>
 
-                {/* Map mockup */}
+                {/* Map mockup - Real Google Satellite imagery */}
                 <div className="mb-4 rounded border border-gray-300 overflow-hidden">
-                  <div className="h-32 bg-gradient-to-br from-[#2d5016] via-[#3d6b1c] to-[#2d5016] relative">
-                    {/* Fake satellite imagery pattern */}
-                    <div className="absolute inset-0 opacity-30" style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }} />
-                    {/* Parcel boundary */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-12 border-2 border-yellow-400 bg-yellow-400/10" />
+                  <div className="h-32 relative bg-gray-800">
+                    <img 
+                      src="https://maps.googleapis.com/maps/api/staticmap?center=35.075633,-106.6489752&zoom=17&size=800x200&maptype=satellite&key=AIzaSyC9PnMfLmIhlvZTm6p4YlvYrTGRwfLfLvc"
+                      alt="Satellite view of 777 1st Street SW, Albuquerque, NM"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to gradient if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.classList.add('bg-gradient-to-br', 'from-[#2d5016]', 'via-[#3d6b1c]', 'to-[#2d5016]');
+                      }}
+                    />
+                    {/* Parcel boundary overlay */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-14 border-2 border-yellow-400 bg-yellow-400/10 pointer-events-none" />
                     <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[8px] px-1.5 py-0.5 rounded font-mono">
                       Google Satellite
                     </div>
