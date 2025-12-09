@@ -27,21 +27,21 @@ interface SoilResult {
 async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult> {
   try {
     // USDA NRCS Web Soil Survey (SSURGO) API
-    // Using the Soil Data Access (SDA) REST endpoint
+    // Using the Soil Data Access (SDA) REST endpoint with MapunitPoly approach
     const sdaUrl = "https://sdmdataaccess.sc.egov.usda.gov/tabular/post.rest";
     
-    // First, get the map unit at the point
+    // Use a simpler spatial query approach that's more reliable
     const query = `
       SELECT TOP 1 
-        muname, musym, mukey
-      FROM mapunit mu
-      INNER JOIN SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lng} ${lat})') mk
-        ON mu.mukey = mk.mukey
+        M.muname, M.musym, M.mukey
+      FROM mupolygon MP
+      INNER JOIN mapunit M ON MP.mukey = M.mukey
+      WHERE MP.mupolygongeo.STContains(geometry::STGeomFromText('POINT(${lng} ${lat})', 4326)) = 1
     `;
 
     console.log(`Querying USDA Soil Data Access for ${lat}, ${lng}`);
 
-    const response = await fetch(sdaUrl, {
+    let response = await fetch(sdaUrl, {
       method: "POST",
       headers: { 
         "Content-Type": "application/x-www-form-urlencoded",
@@ -49,6 +49,29 @@ async function querySoilSurvey(lat: number, lng: number): Promise<SoilResult> {
       },
       body: `query=${encodeURIComponent(query)}&format=JSON`,
     });
+
+    // If spatial query fails, try the point intersect function with different syntax
+    if (!response.ok || response.status >= 400) {
+      console.log("Primary query failed, trying alternative...");
+      
+      const altQuery = `
+        SELECT TOP 1 
+          muname, musym, mukey
+        FROM mapunit
+        WHERE mukey IN (
+          SELECT * FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT (${lng} ${lat})')
+        )
+      `;
+      
+      response = await fetch(sdaUrl, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json"
+        },
+        body: `query=${encodeURIComponent(altQuery)}&format=JSON`,
+      });
+    }
 
     // Check response status
     if (!response.ok) {
