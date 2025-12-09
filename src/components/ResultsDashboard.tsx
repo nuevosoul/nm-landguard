@@ -833,6 +833,23 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     },
   ];
 
+  // Development Suitability Add-Ons (Solar & Infrastructure)
+  const developmentAddOns = {
+    solar: {
+      score: "Excellent",
+      hoursPerYear: 3200,
+      panelCapacity: "8.2 kW recommended",
+      annualSavings: "$1,840/year estimated",
+      roofArea: "1,200 sq ft usable",
+    },
+    infrastructure: {
+      nearestFireStation: { name: "Station 7 - Downtown", distance: 2.1, isoClass: 4 },
+      nearestPolice: { name: "APD Valley Substation", distance: 1.8 },
+      nearestHospital: { name: "Presbyterian Downtown", distance: 3.2 },
+      nearestSchool: { name: "Longfellow Elementary", distance: 0.6 },
+    },
+  };
+
   // Soil findings section
   const soilFindings = {
     icon: TreePine,
@@ -1225,6 +1242,90 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Development Suitability Add-Ons */}
+        <section className="mb-10">
+          <h2 className="font-display text-2xl font-semibold text-foreground mb-6">Development Suitability Add-Ons</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Solar Potential Card */}
+            <div className="p-5 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold text-foreground">Google Solar Analysis</h3>
+                  <p className="text-xs text-muted-foreground">Powered by Google Solar API</p>
+                </div>
+              </div>
+              
+              <div className="text-center py-4 mb-4">
+                <p className="text-3xl font-bold text-amber-500">{developmentAddOns.solar.hoursPerYear.toLocaleString()}</p>
+                <p className="text-sm text-amber-600/80">hours/year sunlight</p>
+                <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-xs font-semibold uppercase">
+                  {developmentAddOns.solar.score} Solar Potential
+                </span>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between py-1 border-b border-amber-500/20">
+                  <span className="text-muted-foreground">Recommended Capacity</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.solar.panelCapacity}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-amber-500/20">
+                  <span className="text-muted-foreground">Est. Annual Savings</span>
+                  <span className="text-amber-500 font-semibold">{developmentAddOns.solar.annualSavings}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">Usable Roof Area</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.solar.roofArea}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Infrastructure Proximity Card */}
+            <div className="p-5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold text-foreground">Infrastructure Proximity</h3>
+                  <p className="text-xs text-muted-foreground">Powered by Google Places API</p>
+                </div>
+              </div>
+              
+              <div className="text-center py-4 mb-4">
+                <p className="text-lg font-semibold text-foreground">{developmentAddOns.infrastructure.nearestFireStation.name}</p>
+                <p className="text-2xl font-bold text-blue-500">{developmentAddOns.infrastructure.nearestFireStation.distance} mi</p>
+                <span className="inline-block mt-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-500 text-xs font-semibold uppercase">
+                  ISO Class {developmentAddOns.infrastructure.nearestFireStation.isoClass}
+                </span>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between py-1 border-b border-blue-500/20">
+                  <span className="text-muted-foreground">Nearest Fire Station</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestFireStation.distance} mi</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-blue-500/20">
+                  <span className="text-muted-foreground">Nearest Police</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestPolice.distance} mi</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-blue-500/20">
+                  <span className="text-muted-foreground">Nearest Hospital</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestHospital.distance} mi</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">Nearest School</span>
+                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestSchool.distance} mi</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
