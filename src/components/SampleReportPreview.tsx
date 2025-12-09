@@ -109,8 +109,59 @@ interface SampleReportPreviewProps {
 const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
+  const [loadingImages, setLoadingImages] = useState<Record<number, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   
   const currentProperty = sampleProperties[currentIndex];
+  
+  // Fetch satellite images from edge function
+  useEffect(() => {
+    const fetchSatelliteImage = async (index: number) => {
+      const property = sampleProperties[index];
+      
+      // Skip if already loaded or loading
+      if (imageUrls[index] || loadingImages[index]) return;
+      
+      setLoadingImages(prev => ({ ...prev, [index]: true }));
+      
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/static-map`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ 
+              lat: property.lat, 
+              lng: property.lng,
+              zoom: 17,
+              size: "800x200"
+            }),
+          }
+        );
+        
+        const data = await response.json();
+        if (data.imageUrl) {
+          setImageUrls(prev => ({ ...prev, [index]: data.imageUrl }));
+        } else {
+          setImageErrors(prev => ({ ...prev, [index]: true }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch satellite image:', error);
+        setImageErrors(prev => ({ ...prev, [index]: true }));
+      } finally {
+        setLoadingImages(prev => ({ ...prev, [index]: false }));
+      }
+    };
+    
+    // Fetch current and preload next
+    fetchSatelliteImage(currentIndex);
+    const nextIndex = (currentIndex + 1) % sampleProperties.length;
+    fetchSatelliteImage(nextIndex);
+  }, [currentIndex, imageUrls, loadingImages]);
   
   // Auto-cycle through properties
   useEffect(() => {
@@ -157,8 +208,6 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
       </span>
     );
   };
-
-  const googleMapsApiKey = "AIzaSyC9PnMfLmIhlvZTm6p4YlvYrTGRwfLfLvc";
 
   return (
     <section className="py-8 bg-muted/20 relative" id="output-preview">
@@ -257,20 +306,26 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
                   </div>
                 </div>
 
-                {/* Map - Real Google Satellite imagery */}
+                {/* Map - Real Google Satellite imagery via edge function */}
                 <div className="mb-4 rounded border border-gray-300 overflow-hidden">
                   <div className="h-32 relative bg-gray-800">
-                    <img 
-                      key={currentIndex} // Force re-render on property change
-                      src={`https://maps.googleapis.com/maps/api/staticmap?center=${currentProperty.lat},${currentProperty.lng}&zoom=17&size=800x200&maptype=satellite&key=${googleMapsApiKey}`}
-                      alt={`Satellite view of ${currentProperty.address}`}
-                      className="w-full h-full object-cover transition-opacity duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.parentElement!.classList.add('bg-gradient-to-br', 'from-[#2d5016]', 'via-[#3d6b1c]', 'to-[#2d5016]');
-                      }}
-                    />
+                    {loadingImages[currentIndex] && !imageUrls[currentIndex] && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                        <div className="text-white text-xs animate-pulse">Loading satellite imagery...</div>
+                      </div>
+                    )}
+                    {imageUrls[currentIndex] ? (
+                      <img 
+                        key={currentIndex}
+                        src={imageUrls[currentIndex]}
+                        alt={`Satellite view of ${currentProperty.address}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : imageErrors[currentIndex] ? (
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#2d5016] via-[#3d6b1c] to-[#2d5016] flex items-center justify-center">
+                        <div className="text-white/70 text-xs">Satellite imagery unavailable</div>
+                      </div>
+                    ) : null}
                     {/* Parcel boundary overlay */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-14 border-2 border-yellow-400 bg-yellow-400/10 pointer-events-none" />
                     <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[8px] px-1.5 py-0.5 rounded font-mono">
