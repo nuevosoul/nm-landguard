@@ -3,6 +3,7 @@ import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import DataStatusTable from "@/components/DataStatusTable";
 import SampleReportPreview from "@/components/SampleReportPreview";
+import ComprehensiveDeliverable from "@/components/ComprehensiveDeliverable";
 import SocialProof from "@/components/SocialProof";
 import SearchCard from "@/components/SearchCard";
 import PaymentModal from "@/components/PaymentModal";
@@ -75,6 +76,8 @@ const Index = () => {
         <HeroSection onRunReport={scrollToSearch} onViewSample={handleViewSample} />
         
         <DataStatusTable />
+        
+        <ComprehensiveDeliverable />
         
         <SampleReportPreview onViewSample={handleViewSample} />
         

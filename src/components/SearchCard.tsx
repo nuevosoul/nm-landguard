@@ -12,8 +12,10 @@ interface SearchCardProps {
 
 const SearchCard = ({ onSearch }: SearchCardProps) => {
   const [address, setAddress] = useState("");
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
   const [mapCoords, setMapCoords] = useState<{ lat: string; lng: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"address" | "map">("address");
+  const [activeTab, setActiveTab] = useState<"address" | "coordinates" | "map">("address");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [legalCheckbox, setLegalCheckbox] = useState(false);
   const [showSolarOverlay, setShowSolarOverlay] = useState(false);
@@ -75,14 +77,25 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
     
     if (activeTab === "address" && address.trim()) {
       onSearch(address, "address");
+    } else if (activeTab === "coordinates" && manualLat.trim() && manualLng.trim()) {
+      onSearch(`${manualLat},${manualLng}`, "coordinates");
     } else if (activeTab === "map" && mapCoords) {
       onSearch(`${mapCoords.lat},${mapCoords.lng}`, "coordinates");
     }
   };
 
+  const isValidCoordinate = (lat: string, lng: string): boolean => {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    return !isNaN(latNum) && !isNaN(lngNum) && 
+           latNum >= -90 && latNum <= 90 && 
+           lngNum >= -180 && lngNum <= 180;
+  };
+
   const isSubmitDisabled = () => {
     if (!legalCheckbox) return true;
     if (activeTab === "address") return !address.trim();
+    if (activeTab === "coordinates") return !manualLat.trim() || !manualLng.trim() || !isValidCoordinate(manualLat, manualLng);
     if (activeTab === "map") return !mapCoords;
     return true;
   };
@@ -107,27 +120,31 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
             <div className="relative p-6 md:p-8">
               {/* Header - compact */}
               <div className="text-center mb-5">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 mb-4">
-                  <MapPin className="w-7 h-7 text-primary" />
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 mb-3">
+                  <MapPin className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="font-display text-2xl font-semibold text-foreground mb-1 tracking-tight">
+                <h2 className="font-display text-xl font-semibold text-foreground mb-1 tracking-tight">
                   Start Your Due Diligence
                 </h2>
-                <p className="text-muted-foreground text-sm">
-                  Search by address or drop a pin on the map
+                <p className="text-muted-foreground text-xs">
+                  Search by address, coordinates, or drop a pin on the map
                 </p>
               </div>
 
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mb-4">
-                <TabsList className="grid w-full grid-cols-2 h-10">
-                  <TabsTrigger value="address" className="flex items-center gap-2 text-sm">
-                    <Search className="w-4 h-4" />
-                    Search by Address
+                <TabsList className="grid w-full grid-cols-3 h-9">
+                  <TabsTrigger value="address" className="flex items-center gap-1.5 text-[11px]">
+                    <Search className="w-3 h-3" />
+                    Address
                   </TabsTrigger>
-                  <TabsTrigger value="map" className="flex items-center gap-2 text-sm">
-                    <Map className="w-4 h-4" />
-                    Search by Map
+                  <TabsTrigger value="coordinates" className="flex items-center gap-1.5 text-[11px]">
+                    <Crosshair className="w-3 h-3" />
+                    Coordinates
+                  </TabsTrigger>
+                  <TabsTrigger value="map" className="flex items-center gap-1.5 text-[11px]">
+                    <Map className="w-3 h-3" />
+                    Map Pin
                   </TabsTrigger>
                 </TabsList>
 
@@ -174,6 +191,47 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
                     </div>
                     <p className="text-[10px] text-muted-foreground text-center font-mono">
                       Supports: street address, APN, legal description, or GPS coordinates
+                    </p>
+                  </TabsContent>
+
+                  <TabsContent value="coordinates" className="mt-0 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative">
+                        <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide mb-1 block">Latitude (Decimal)</label>
+                        <Input
+                          type="text"
+                          placeholder="e.g., 35.084400"
+                          value={manualLat}
+                          onChange={(e) => setManualLat(e.target.value)}
+                          className="h-10 text-sm font-mono bg-muted/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-lg"
+                        />
+                      </div>
+                      <div className="relative">
+                        <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide mb-1 block">Longitude (Decimal)</label>
+                        <Input
+                          type="text"
+                          placeholder="e.g., -106.650400"
+                          value={manualLng}
+                          onChange={(e) => setManualLng(e.target.value)}
+                          className="h-10 text-sm font-mono bg-muted/50 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    {manualLat && manualLng && isValidCoordinate(manualLat, manualLng) && (
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
+                        <Crosshair className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-mono text-foreground">
+                          {parseFloat(manualLat).toFixed(6)}°N, {Math.abs(parseFloat(manualLng)).toFixed(6)}°W
+                        </span>
+                      </div>
+                    )}
+                    {manualLat && manualLng && !isValidCoordinate(manualLat, manualLng) && (
+                      <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+                        Invalid coordinates. Latitude: -90 to 90, Longitude: -180 to 180.
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground text-center font-mono">
+                      Enter WGS84 decimal degrees (e.g., from GPS or survey documents)
                     </p>
                   </TabsContent>
 
