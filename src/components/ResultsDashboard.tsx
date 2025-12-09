@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
-import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type CulturalResourcesData as PDFCulturalData, type SolarData as PDFSolarData, type InfrastructureData as PDFInfraData } from "@/lib/pdfExport";
+import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type CulturalResourcesData as PDFCulturalData, type SolarData as PDFSolarData, type InfrastructureData as PDFInfraData, type FloodData as PDFFloodData, type EPAData as PDFEPAData } from "@/lib/pdfExport";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
@@ -1074,6 +1074,17 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                       nearestSchool: infrastructureData.nearestSchool,
                       nearestGrocery: infrastructureData.nearestGrocery,
                       source: infrastructureData.source,
+                    } : undefined,
+                    floodData: floodData ? {
+                      floodZone: floodData.floodZone,
+                      floodZoneDescription: floodData.floodZoneDescription,
+                      sfha: floodData.sfha,
+                      riskLevel: floodData.riskLevel,
+                      source: floodData.source,
+                    } : undefined,
+                    epaData: epaData ? {
+                      summary: epaData.summary,
+                      source: epaData.source,
                     } : undefined,
                   };
                   downloadPDF(pdfData);
