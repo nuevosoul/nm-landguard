@@ -10,7 +10,7 @@ const SocialProof = () => {
   ];
 
   return (
-    <section className="py-20 border-y border-border/50 bg-muted/30 relative">
+    <section className="py-10 border-y border-border/50 bg-muted/30 relative">
       {/* Subtle pattern */}
       <div className="absolute inset-0 opacity-[0.02]">
         <div className="absolute inset-0" style={{
@@ -19,7 +19,7 @@ const SocialProof = () => {
       </div>
 
       <div className="container mx-auto px-4 relative">
-        <div className="flex items-center justify-center gap-3 mb-12">
+        <div className="flex items-center justify-center gap-3 mb-6">
           <div className="h-px w-12 bg-gradient-to-r from-transparent to-border" />
           <Building2 className="w-4 h-4 text-primary" />
           <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.25em]">

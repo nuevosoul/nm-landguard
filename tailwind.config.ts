@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['"Source Sans 3"', 'system-ui', 'sans-serif'],
         display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
