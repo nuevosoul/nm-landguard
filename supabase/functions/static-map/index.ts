@@ -6,20 +6,69 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation functions
+function validateCoordinate(value: unknown, type: 'lat' | 'lng'): { valid: boolean; value: number; error?: string } {
+  if (value === undefined || value === null) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} is required` };
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (typeof num !== 'number' || isNaN(num)) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} must be a valid number` };
+  }
+  const [min, max] = type === 'lat' ? [-90, 90] : [-180, 180];
+  if (num < min || num > max) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} must be between ${min} and ${max}` };
+  }
+  return { valid: true, value: num };
+}
+
+function validateDimension(dim: unknown, defaultValue: number, maxValue: number = 1280): number {
+  if (dim === undefined || dim === null) return defaultValue;
+  const num = typeof dim === 'string' ? parseInt(dim, 10) : dim;
+  if (typeof num !== 'number' || isNaN(num) || num < 64 || num > maxValue) return defaultValue;
+  return num;
+}
+
+function validateZoom(zoom: unknown, defaultValue: number = 18): number {
+  if (zoom === undefined || zoom === null) return defaultValue;
+  const num = typeof zoom === 'string' ? parseInt(zoom, 10) : zoom;
+  if (typeof num !== 'number' || isNaN(num) || num < 1 || num > 21) return defaultValue;
+  return num;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { lat, lng, parcelGeometry, zoom = 18, width = 640, height = 400 } = await req.json();
+    const body = await req.json();
     
-    if (lat === undefined || lng === undefined) {
+    // Validate coordinates
+    const latResult = validateCoordinate(body.lat, 'lat');
+    if (!latResult.valid) {
       return new Response(
-        JSON.stringify({ error: 'Coordinates required' }),
+        JSON.stringify({ error: latResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    const lngResult = validateCoordinate(body.lng, 'lng');
+    if (!lngResult.valid) {
+      return new Response(
+        JSON.stringify({ error: lngResult.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const lat = latResult.value;
+    const lng = lngResult.value;
+    
+    // Validate and sanitize optional parameters with reasonable limits
+    const zoom = validateZoom(body.zoom);
+    const width = validateDimension(body.width, 640, 1280);
+    const height = validateDimension(body.height, 400, 1280);
+    const parcelGeometry = body.parcelGeometry;
 
     const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
     if (!apiKey) {

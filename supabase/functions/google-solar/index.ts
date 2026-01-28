@@ -21,6 +21,22 @@ interface SolarData {
   recommendedCapacityKw: number;
 }
 
+// Input validation
+function validateCoordinate(value: unknown, type: 'lat' | 'lng'): { valid: boolean; value: number; error?: string } {
+  if (value === undefined || value === null) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} is required` };
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (typeof num !== 'number' || isNaN(num)) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} must be a valid number` };
+  }
+  const [min, max] = type === 'lat' ? [-90, 90] : [-180, 180];
+  if (num < min || num > max) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} must be between ${min} and ${max}` };
+  }
+  return { valid: true, value: num };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -28,14 +44,27 @@ serve(async (req) => {
   }
 
   try {
-    const { lat, lng } = await req.json();
+    const body = await req.json();
     
-    if (!lat || !lng) {
+    // Validate coordinates
+    const latResult = validateCoordinate(body.lat, 'lat');
+    if (!latResult.valid) {
       return new Response(
-        JSON.stringify({ error: 'Latitude and longitude are required' }),
+        JSON.stringify({ error: latResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    const lngResult = validateCoordinate(body.lng, 'lng');
+    if (!lngResult.valid) {
+      return new Response(
+        JSON.stringify({ error: lngResult.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const lat = latResult.value;
+    const lng = lngResult.value;
 
     console.log(`Google Solar API lookup for: ${lat}, ${lng}`);
 
