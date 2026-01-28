@@ -92,34 +92,55 @@ async function geocodeWithNominatim(address: string) {
   return { notFound: true };
 }
 
+// Input validation
+function validateAddress(address: unknown): { valid: boolean; value: string; error?: string } {
+  if (address === undefined || address === null || address === '') {
+    return { valid: false, value: "", error: "Address is required" };
+  }
+  if (typeof address !== 'string') {
+    return { valid: false, value: "", error: "Address must be a string" };
+  }
+  const trimmed = address.trim();
+  if (trimmed.length < 3) {
+    return { valid: false, value: "", error: "Address must be at least 3 characters" };
+  }
+  if (trimmed.length > 500) {
+    return { valid: false, value: "", error: "Address must not exceed 500 characters" };
+  }
+  // Basic sanitization - prevent script injection
+  if (/<script|javascript:|data:/i.test(trimmed)) {
+    return { valid: false, value: "", error: "Invalid characters in address" };
+  }
+  return { valid: true, value: trimmed };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { address } = await req.json();
+    const body = await req.json();
     
-    if (!address) {
-      console.error('No address provided');
+    // Validate address input
+    const addressResult = validateAddress(body.address);
+    if (!addressResult.valid) {
+      console.error('Address validation failed:', addressResult.error);
       return new Response(
-        JSON.stringify({ error: 'Address is required' }),
+        JSON.stringify({ error: addressResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log(`Geocoding address: ${address}`);
+    
+    const address = addressResult.value;
+    console.log(`Geocoding address: ${address.substring(0, 100)}${address.length > 100 ? '...' : ''}`);
 
     const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
     let result = null;
     let usedFallback = false;
 
-    // Debug: Log masked key info
-    if (apiKey) {
-      console.log(`API key found, length: ${apiKey.length}, starts with: ${apiKey.substring(0, 8)}..., ends with: ...${apiKey.substring(apiKey.length - 4)}`);
-    } else {
-      console.log('No GOOGLE_MAPS_API_KEY found in environment');
-    }
+    // Log API key presence (never log actual key content)
+    console.log(`Google API key configured: ${!!apiKey}`);
 
     // Try Google first if API key exists
     if (apiKey) {

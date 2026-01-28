@@ -209,20 +209,57 @@ async function queryEPAFacilities(lat: number, lng: number, radiusMiles: number 
   }
 }
 
+// Input validation
+function validateCoordinate(value: unknown, type: 'lat' | 'lng'): { valid: boolean; value: number; error?: string } {
+  if (value === undefined || value === null) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} is required` };
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (typeof num !== 'number' || isNaN(num)) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} must be a valid number` };
+  }
+  const [min, max] = type === 'lat' ? [-90, 90] : [-180, 180];
+  if (num < min || num > max) {
+    return { valid: false, value: 0, error: `${type === 'lat' ? 'Latitude' : 'Longitude'} must be between ${min} and ${max}` };
+  }
+  return { valid: true, value: num };
+}
+
+function validateRadius(radius: unknown, defaultValue: number = 5, maxValue: number = 50): number {
+  if (radius === undefined || radius === null) return defaultValue;
+  const num = typeof radius === 'string' ? parseFloat(radius) : radius;
+  if (typeof num !== 'number' || isNaN(num) || num < 0.1 || num > maxValue) return defaultValue;
+  return num;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { lat, lng, radiusMiles = 5 } = await req.json();
-
-    if (!lat || !lng) {
+    const body = await req.json();
+    
+    // Validate coordinates
+    const latResult = validateCoordinate(body.lat, 'lat');
+    if (!latResult.valid) {
       return new Response(
-        JSON.stringify({ error: "Latitude and longitude are required" }),
+        JSON.stringify({ error: latResult.error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    const lngResult = validateCoordinate(body.lng, 'lng');
+    if (!lngResult.valid) {
+      return new Response(
+        JSON.stringify({ error: lngResult.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const lat = latResult.value;
+    const lng = lngResult.value;
+    const radiusMiles = validateRadius(body.radiusMiles, 5, 50);
 
     console.log(`EPA envirofacts lookup for: ${lat}, ${lng}, radius: ${radiusMiles} miles`);
 
