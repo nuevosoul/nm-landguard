@@ -15,17 +15,70 @@ function validateQuery(query: unknown): { valid: boolean; value: string; error?:
   }
   const trimmed = query.trim();
   if (trimmed.length < 3) {
-    // Return empty suggestions instead of error for short queries
     return { valid: false, value: "", error: "" };
   }
   if (trimmed.length > 200) {
     return { valid: false, value: "", error: "Query must not exceed 200 characters" };
   }
-  // Basic sanitization - prevent script injection
   if (/<script|javascript:|data:/i.test(trimmed)) {
     return { valid: false, value: "", error: "Invalid characters in query" };
   }
   return { valid: true, value: trimmed };
+}
+
+// Google Places Autocomplete
+async function autocompleteWithGoogle(query: string, apiKey: string) {
+  // Use Places Autocomplete API - bias towards New Mexico
+  const params = new URLSearchParams({
+    input: query,
+    key: apiKey,
+    components: 'country:us',
+    locationbias: 'rectangle:31.3,-109.5|37.0,-103.0', // New Mexico bounding box
+    types: 'address',
+  });
+  
+  const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  
+  console.log(`Google Places status: ${data.status}, predictions: ${data.predictions?.length || 0}`);
+  
+  if (data.status === 'OK' && data.predictions) {
+    return data.predictions.map((p: any) => ({
+      displayName: p.description,
+      placeId: p.place_id,
+      mainText: p.structured_formatting?.main_text || '',
+      secondaryText: p.structured_formatting?.secondary_text || '',
+      types: p.types || [],
+    }));
+  }
+  
+  if (data.status === 'ZERO_RESULTS') {
+    return [];
+  }
+  
+  throw new Error(`Google Places error: ${data.status} - ${data.error_message || 'Unknown'}`);
+}
+
+// Nominatim fallback
+async function autocompleteWithNominatim(query: string) {
+  const encodedQuery = encodeURIComponent(`${query}, New Mexico, USA`);
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=5&addressdetails=1&countrycodes=us`;
+  
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'RioGrandeDueDiligence/1.0' }
+  });
+  
+  const data = await response.json();
+  console.log(`Nominatim returned ${data.length} suggestions`);
+
+  return data.map((item: any) => ({
+    displayName: item.display_name,
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+    type: item.type,
+    importance: item.importance
+  }));
 }
 
 serve(async (req) => {
@@ -36,10 +89,8 @@ serve(async (req) => {
   try {
     const body = await req.json();
     
-    // Validate query input
     const queryResult = validateQuery(body.query);
     if (!queryResult.valid) {
-      // Return empty suggestions for validation errors (don't expose error details for security)
       return new Response(
         JSON.stringify({ suggestions: [] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -49,26 +100,22 @@ serve(async (req) => {
     const query = queryResult.value;
     console.log(`Autocomplete query: ${query.substring(0, 50)}${query.length > 50 ? '...' : ''}`);
 
-    // Use Nominatim for autocomplete - focus on New Mexico
-    const encodedQuery = encodeURIComponent(`${query}, New Mexico, USA`);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=5&addressdetails=1&countrycodes=us`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'RioGrandeDueDiligence/1.0'
-      }
-    });
-    
-    const data = await response.json();
-    console.log(`Nominatim returned ${data.length} suggestions`);
+    const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    let suggestions = [];
 
-    const suggestions = data.map((item: any) => ({
-      displayName: item.display_name,
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      type: item.type,
-      importance: item.importance
-    }));
+    // Try Google Places first
+    if (apiKey) {
+      try {
+        suggestions = await autocompleteWithGoogle(query, apiKey);
+        console.log('Google Places autocomplete succeeded');
+      } catch (googleError) {
+        console.warn(`Google Places failed, using Nominatim fallback: ${googleError}`);
+        suggestions = await autocompleteWithNominatim(query);
+      }
+    } else {
+      console.log('No Google API key, using Nominatim');
+      suggestions = await autocompleteWithNominatim(query);
+    }
 
     return new Response(
       JSON.stringify({ suggestions }),
