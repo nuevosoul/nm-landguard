@@ -12,6 +12,7 @@ import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
+import { getEssentialContacts, formatContactForDisplay } from "@/lib/regulatoryContacts";
 import { supabase } from "@/integrations/supabase/client";
 import RiskRadarChart from "./RiskRadarChart";
 import ExportPackage from "./ExportPackage";
@@ -269,6 +270,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [wellData, setWellData] = useState<{ wells: WellData[]; summary: WellDataSummary } | null>(null);
   const [displayAddress, setDisplayAddress] = useState<string>(address);
   const [countyName, setCountyName] = useState<string>("Loading...");
+  const [cityName, setCityName] = useState<string | null>(null);
   const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   
@@ -302,6 +304,28 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
     }
     return "New Mexico";
+  };
+
+  // Extract city from geocoded display name
+  const extractCity = (displayName: string): string | null => {
+    // Google format: "123 Main St, Albuquerque, NM 87102, USA"
+    // Known NM cities to look for
+    const knownCities = [
+      "Albuquerque", "Santa Fe", "Las Cruces", "Rio Rancho", "Roswell",
+      "Farmington", "Carlsbad", "Hobbs", "Clovis", "Alamogordo",
+      "Española", "Taos", "Los Alamos", "Gallup", "Deming", "Artesia",
+      "Lovington", "Portales", "Silver City", "Ruidoso"
+    ];
+    
+    const parts = displayName.split(',').map(p => p.trim());
+    for (const part of parts) {
+      for (const city of knownCities) {
+        if (part.toLowerCase() === city.toLowerCase()) {
+          return city;
+        }
+      }
+    }
+    return null;
   };
 
   // Fetch property data from county assessor
@@ -499,9 +523,11 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           setCoordinates({ lat: geocodeResult.lat, lng: geocodeResult.lng });
           setDisplayAddress(geocodeResult.displayName);
           
-          // Extract county from display name
+          // Extract county and city from display name
           const county = extractCounty(geocodeResult.displayName);
           setCountyName(county);
+          const city = extractCity(geocodeResult.displayName);
+          setCityName(city);
           
           // Fetch all data in parallel
           fetchPropertyLookup(geocodeResult.lat, geocodeResult.lng);
@@ -1010,12 +1036,13 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     ]
   };
 
-  const regulatoryContacts = [
-    { agency: "NM State Historic Preservation Office", phone: "(505) 827-6320", purpose: "Cultural resource surveys, NMCRIS" },
-    { agency: "NM Office of the State Engineer", phone: "(505) 827-6120", purpose: "Water permits, rights transfers" },
-    { agency: "USFWS NM Ecological Services", phone: "(505) 346-2525", purpose: "ESA consultations" },
-    { agency: "City of Albuquerque Planning", phone: "(505) 924-3860", purpose: "Zoning, permits" },
-  ];
+  // Get location-aware regulatory contacts based on county and city
+  const nearbyTribalLands = culturalData?.tribalLandsWithin5Miles?.map(t => t.name);
+  const regulatoryContacts = getEssentialContacts(
+    effectiveCounty,
+    cityName,
+    nearbyTribalLands
+  ).map(formatContactForDisplay);
 
   return (
     <div className="min-h-screen bg-background">
