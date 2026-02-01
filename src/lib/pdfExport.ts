@@ -201,7 +201,7 @@ export function generatePDFContent(data: ReportData): string {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Environmental Due Diligence Report - ${data.reportId}</title>
+  <title>Rio Grande Due Diligence Report - ${data.reportId}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -518,7 +518,7 @@ export function generatePDFContent(data: ReportData): string {
       </div>
     </div>
     
-    <h1>Environmental Due Diligence Report</h1>
+    <h1>Rio Grande Due Diligence Report</h1>
     
     <div class="property-section">
       <div class="property-address">${data.address}</div>

@@ -275,7 +275,7 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
                 {/* Report header */}
                 <div className="flex items-start justify-between border-b border-gray-200 pb-4 mb-4">
                   <div>
-                    <h3 className="font-display text-lg text-gray-900 font-semibold">Environmental Due Diligence Report</h3>
+                    <h3 className="font-display text-lg text-gray-900 font-semibold">Rio Grande Due Diligence Report</h3>
                     <p className="text-xs text-gray-500 font-mono mt-1">Report ID: RGDD-2024-{String.fromCharCode(65 + currentIndex)}7F3K{currentIndex + 2}</p>
                   </div>
                   <div className="text-right">
