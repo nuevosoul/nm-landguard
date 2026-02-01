@@ -1,4 +1,6 @@
 // Geocoding via Edge Function (supports address, legal description, and coordinates)
+import { supabase } from "@/lib/supabaseClient";
+
 export interface GeocodingResult {
   lat: number;
   lng: number;
@@ -64,34 +66,12 @@ export async function geocodeAddress(
   }
 
   try {
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/geocode`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ address: searchQuery }),
-      }
-    );
+    const { data, error } = await supabase.functions.invoke('geocode', {
+      body: { address: searchQuery },
+    });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Geocoding error:", response.status, errorData);
-
-      if (response.status === 404) {
-        return {
-          lat: 35.0844,
-          lng: -106.6504,
-          displayName: query,
-          accuracy: "area",
-          source: "fallback",
-          isError: true,
-          error: "Address not found. Please verify the address and try again.",
-        };
-      }
-
+    if (error) {
+      console.error("Geocoding error:", error);
       return {
         lat: 35.0844,
         lng: -106.6504,
@@ -99,11 +79,21 @@ export async function geocodeAddress(
         accuracy: "area",
         source: "fallback",
         isError: true,
-        error: errorData.error || "Geocoding service error. Please try again.",
+        error: error.message || "Geocoding service error. Please try again.",
       };
     }
 
-    const data = await response.json();
+    if (!data) {
+      return {
+        lat: 35.0844,
+        lng: -106.6504,
+        displayName: query,
+        accuracy: "area",
+        source: "fallback",
+        isError: true,
+        error: "Address not found. Please verify the address and try again.",
+      };
+    }
 
     return {
       lat: data.lat,
@@ -132,24 +122,15 @@ export async function lookupPLSS(lat: number, lng: number): Promise<PLSSResult |
   console.log(`Looking up PLSS for: ${lat}, ${lng}`);
 
   try {
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plss-lookup`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ lat, lng }),
-      }
-    );
+    const { data, error } = await supabase.functions.invoke('plss-lookup', {
+      body: { lat, lng },
+    });
 
-    if (!response.ok) {
-      console.error("PLSS lookup error:", response.status);
+    if (error) {
+      console.error("PLSS lookup error:", error);
       return null;
     }
 
-    const data = await response.json();
     console.log("PLSS result:", data);
     return data as PLSSResult;
   } catch (error) {
