@@ -105,6 +105,14 @@ const Index = () => {
     }
   };
 
+  // Check if dev mode is enabled (bypass payment)
+  const isDevMode = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasDevParam = urlParams.get("dev") === "true";
+    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    return hasDevParam || isLocalhost;
+  };
+
   const handleSearch = (query: string, type: QueryType | "map") => {
     setSearchAddress(query);
     // Normalize "map" to "coordinates" for the query type
@@ -119,6 +127,17 @@ const Index = () => {
       }
     } else {
       setCoordinates(undefined);
+    }
+    
+    // Dev bypass: skip payment and go directly to loading/results
+    if (isDevMode()) {
+      console.log("[DEV MODE] Bypassing payment, going directly to report");
+      toast({
+        title: "Dev Mode Active",
+        description: "Payment bypassed - generating report directly",
+      });
+      setAppState("loading");
+      return;
     }
     
     setShowPaymentModal(true);
