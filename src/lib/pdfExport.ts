@@ -572,35 +572,37 @@ export function generatePDFContent(data: ReportData): string {
     <h2>Water Rights & Restrictions</h2>
     <div class="finding-card">
       <div class="finding-header">
-        <span class="finding-title">NM Office of State Engineer Analysis</span>
+        <span class="finding-title">NM Office of State Engineer - Verification Required</span>
         <span class="status-badge" style="background: ${waterConfig.text}; color: white;">${waterConfig.label}</span>
       </div>
       <div class="finding-items">
         <div class="finding-item">
-          <span>Basin Status</span>
-          <span>Declared (1956)</span>
+          <span>State Administration</span>
+          <span>NM Office of State Engineer</span>
         </div>
         <div class="finding-item">
-          <span>Basin Name</span>
-          <span>Middle Rio Grande</span>
+          <span>Municipal Water</span>
+          <span>Verify with local utility</span>
+        </div>
+        <div class="finding-item">
+          <span>Domestic Well</span>
+          <span>May require OSE permit</span>
         </div>
         <div class="finding-item">
           <span>Water Rights on Parcel</span>
-          <span>None recorded</span>
-        </div>
-        <div class="finding-item">
-          <span>Municipal Connection</span>
-          <span>Available</span>
+          <span>Research required</span>
         </div>
       </div>
       <div class="recommendations">
         <h4>Recommended Actions</h4>
         <ol>
-          <li>Connect to municipal water system (ABCWUA)</li>
-          <li>If domestic well desired, file OSE permit with offset plan</li>
-          <li>Consult OSE District 1 office for permit timeline</li>
+          <li>Contact local water utility to verify if municipal connection is available</li>
+          <li>Search NM OSE WATERS database for existing water rights on parcel</li>
+          <li>If well needed, contact OSE District office for permit requirements</li>
+          <li>For rural properties, budget for well drilling or water hauling if no municipal service</li>
         </ol>
       </div>
+      <p style="font-size: 10px; color: #666; margin-top: 8px;">Note: Water rights and utility availability must be verified directly with NM OSE and local providers. This report provides general guidance only.</p>
     </div>
     
     ${wellSection}
@@ -608,35 +610,37 @@ export function generatePDFContent(data: ReportData): string {
     <h2>Critical Habitat & ESA Compliance</h2>
     <div class="finding-card">
       <div class="finding-header">
-        <span class="finding-title">USFWS Critical Habitat Analysis</span>
+        <span class="finding-title">ESA Compliance - Verification Recommended</span>
         <span class="status-badge" style="background: ${habitatConfig.text}; color: white;">${habitatConfig.label}</span>
       </div>
       <div class="finding-items">
         <div class="finding-item">
-          <span>Critical Habitat Overlap</span>
-          <span>None detected</span>
+          <span>Critical Habitat</span>
+          <span>IPaC query recommended</span>
         </div>
         <div class="finding-item">
           <span>ESA Listed Species</span>
-          <span>None documented</span>
+          <span>Location-dependent</span>
         </div>
         <div class="finding-item">
-          <span>Silvery Minnow Habitat</span>
-          <span>2.1 miles (outside zone)</span>
+          <span>Migratory Bird Treaty Act</span>
+          <span>Applies statewide</span>
         </div>
         <div class="finding-item">
           <span>Wetland/Waters of US</span>
-          <span>None identified</span>
+          <span>Site inspection needed</span>
         </div>
       </div>
       <div class="recommendations">
         <h4>Recommended Actions</h4>
         <ol>
-          <li>Pre-construction bird survey if clearing during nesting season</li>
-          <li>Implement standard SWPPP for stormwater management</li>
-          <li>No ESA Section 7 consultation anticipated</li>
+          <li>Run USFWS IPaC query at ecos.fws.gov/ipac for official species list</li>
+          <li>Pre-construction bird survey if clearing during nesting season (Apr-Jul)</li>
+          <li>If near water features, conduct wetland delineation</li>
+          <li>Implement standard SWPPP for construction stormwater management</li>
         </ol>
       </div>
+      <p style="font-size: 10px; color: #666; margin-top: 8px;">Note: Site-specific ESA analysis requires official USFWS IPaC query. This report provides general guidance only.</p>
     </div>
     
     ${floodSection}
