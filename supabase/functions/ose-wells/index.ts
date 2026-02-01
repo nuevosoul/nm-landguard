@@ -181,15 +181,40 @@ serve(async (req) => {
       const wellLng = geom.x || 0;
       const distance = calculateDistanceMiles(lat, lng, wellLat, wellLng);
 
+      // Map use codes to descriptions
+      const useCodeMap: Record<string, string> = {
+        'IRR': 'Irrigation',
+        'DOM': 'Domestic',
+        'STK': 'Stock',
+        'MUN': 'Municipal',
+        'IND': 'Industrial',
+        'COM': 'Commercial',
+        'MIN': 'Mining',
+        'REC': 'Recreation',
+        'PWR': 'Power',
+        'OTH': 'Other'
+      };
+      
+      // Map basin codes to types
+      const basinTypeMap: Record<string, string> = {
+        'SD': 'Surface Diversion',
+        'UG': 'Underground Well',
+        'SP': 'Spring',
+        'GW': 'Groundwater'
+      };
+      
+      const useCode = attrs.use_ || attrs.use || '';
+      const basin = attrs.basin || attrs.pod_basin || '';
+      
       return {
-        objectId: attrs.OBJECTID || attrs.objectid || 0,
+        objectId: attrs.OBJECTID || attrs.objectid || attrs.OBJECTID_1 || 0,
         lat: wellLat,
         lng: wellLng,
-        podType: attrs.POD_TYPE || attrs.pod_type || 'Unknown',
-        podId: attrs.POD_ID || attrs.pod_id || 'N/A',
-        waterUse: attrs.USE_DESC || attrs.use_desc || attrs.USE || attrs.use || 'Unknown',
-        status: attrs.STATUS || attrs.status || 'Unknown',
-        permitNumber: attrs.FILE_NUMBER || attrs.file_number || attrs.PERMIT_NO || 'N/A',
+        podType: basinTypeMap[basin] || basin || 'Unknown',
+        podId: attrs.pod_file || attrs.db_file || attrs.POD_ID || 'N/A',
+        waterUse: useCodeMap[useCode] || useCode || 'Unknown',
+        status: attrs.status || attrs.STATUS || 'Unknown',
+        permitNumber: attrs.pod_file || attrs.db_file || 'N/A',
         distance: Math.round(distance * 100) / 100
       };
     }).sort((a: WellData, b: WellData) => a.distance - b.distance);
