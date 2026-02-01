@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FileText, AlertTriangle, MapPin, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabaseClient";
 
 interface SampleProperty {
   address: string;
@@ -126,27 +127,19 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
       setLoadingImages(prev => ({ ...prev, [index]: true }));
       
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/static-map`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({ 
-              lat: property.lat, 
-              lng: property.lng,
-              zoom: 17,
-              size: "800x200"
-            }),
-          }
-        );
+        const { data, error } = await supabase.functions.invoke('static-map', {
+          body: { 
+            lat: property.lat, 
+            lng: property.lng,
+            zoom: 17,
+            size: "800x200"
+          },
+        });
         
-        const data = await response.json();
-        if (data.imageUrl) {
+        if (!error && data?.imageUrl) {
           setImageUrls(prev => ({ ...prev, [index]: data.imageUrl }));
         } else {
+          console.error('Static map error:', error);
           setImageErrors(prev => ({ ...prev, [index]: true }));
         }
       } catch (error) {

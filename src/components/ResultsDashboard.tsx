@@ -368,24 +368,15 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const fetchPropertyLookup = async (lat: number, lng: number) => {
     setIsLoadingProperty(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/property-lookup`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ lat, lng }),
-        }
-      );
+      const { data: result, error } = await supabase.functions.invoke('property-lookup', {
+        body: { lat, lng },
+      });
 
-      const result = await response.json();
-      if (result.success && result.data) {
+      if (!error && result?.success && result.data) {
         setPropertyData(result.data);
         console.log('Property data loaded:', result.data);
       } else {
-        console.log('Property lookup failed:', result.error || result.message);
+        console.log('Property lookup failed:', error?.message || result?.error || result?.message);
       }
     } catch (error) {
       console.error('Property lookup error:', error);
@@ -397,37 +388,19 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   // Fetch environmental data (FEMA, EPA, Elevation, Soil)
   const fetchEnvironmentalData = async (lat: number, lng: number) => {
     setIsLoadingEnvironmental(true);
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
     try {
-      // Fetch all environmental data in parallel
+      // Fetch all environmental data in parallel using supabase client
       const [floodRes, epaRes, elevRes, soilRes] = await Promise.allSettled([
-        fetch(`${baseUrl}/functions/v1/fema-flood`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ lat, lng }),
-        }),
-        fetch(`${baseUrl}/functions/v1/epa-envirofacts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ lat, lng, radiusMiles: 5 }),
-        }),
-        fetch(`${baseUrl}/functions/v1/elevation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ lat, lng }),
-        }),
-        fetch(`${baseUrl}/functions/v1/soil-survey`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ lat, lng }),
-        }),
+        supabase.functions.invoke('fema-flood', { body: { lat, lng } }),
+        supabase.functions.invoke('epa-envirofacts', { body: { lat, lng, radiusMiles: 5 } }),
+        supabase.functions.invoke('elevation', { body: { lat, lng } }),
+        supabase.functions.invoke('soil-survey', { body: { lat, lng } }),
       ]);
 
       // Process FEMA flood data
-      if (floodRes.status === "fulfilled" && floodRes.value.ok) {
-        const data = await floodRes.value.json();
+      if (floodRes.status === "fulfilled" && !floodRes.value.error && floodRes.value.data) {
+        const data = floodRes.value.data;
         if (!data.error) {
           setFloodData(data);
           console.log("Flood data loaded:", data);
@@ -435,8 +408,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
 
       // Process EPA data
-      if (epaRes.status === "fulfilled" && epaRes.value.ok) {
-        const data = await epaRes.value.json();
+      if (epaRes.status === "fulfilled" && !epaRes.value.error && epaRes.value.data) {
+        const data = epaRes.value.data;
         if (!data.error) {
           setEpaData(data);
           console.log("EPA data loaded:", data.summary);
@@ -444,8 +417,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
 
       // Process elevation data
-      if (elevRes.status === "fulfilled" && elevRes.value.ok) {
-        const data = await elevRes.value.json();
+      if (elevRes.status === "fulfilled" && !elevRes.value.error && elevRes.value.data) {
+        const data = elevRes.value.data;
         if (!data.error) {
           setElevationData(data);
           console.log("Elevation data loaded:", data);
@@ -453,8 +426,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
 
       // Process soil data
-      if (soilRes.status === "fulfilled" && soilRes.value.ok) {
-        const data = await soilRes.value.json();
+      if (soilRes.status === "fulfilled" && !soilRes.value.error && soilRes.value.data) {
+        const data = soilRes.value.data;
         if (!data.error) {
           setSoilData(data);
           console.log("Soil data loaded:", data);
@@ -470,22 +443,15 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   // Fetch cultural resources data (Tribal lands, NRHP)
   const fetchCulturalData = async (lat: number, lng: number) => {
     setIsLoadingCultural(true);
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
     try {
-      const response = await fetch(`${baseUrl}/functions/v1/cultural-resources`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ lat, lng }),
+      const { data, error } = await supabase.functions.invoke('cultural-resources', {
+        body: { lat, lng },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (!data.error) {
-          setCulturalData(data);
-          console.log("Cultural resources data loaded:", data);
-        }
+      if (!error && data && !data.error) {
+        setCulturalData(data);
+        console.log("Cultural resources data loaded:", data);
       }
     } catch (error) {
       console.error("Error fetching cultural data:", error);
@@ -497,22 +463,15 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   // Fetch Google Solar API data
   const fetchSolarData = async (lat: number, lng: number) => {
     setIsLoadingSolar(true);
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
     try {
-      const response = await fetch(`${baseUrl}/functions/v1/google-solar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ lat, lng }),
+      const { data, error } = await supabase.functions.invoke('google-solar', {
+        body: { lat, lng },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (!data.error) {
-          setSolarData(data);
-          console.log("Solar data loaded:", data);
-        }
+      if (!error && data && !data.error) {
+        setSolarData(data);
+        console.log("Solar data loaded:", data);
       }
     } catch (error) {
       console.error("Error fetching solar data:", error);
@@ -524,22 +483,15 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   // Fetch Google Places infrastructure data
   const fetchInfrastructureData = async (lat: number, lng: number) => {
     setIsLoadingInfrastructure(true);
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
     try {
-      const response = await fetch(`${baseUrl}/functions/v1/google-places`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ lat, lng }),
+      const { data, error } = await supabase.functions.invoke('google-places', {
+        body: { lat, lng },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (!data.error) {
-          setInfrastructureData(data);
-          console.log("Infrastructure data loaded:", data);
-        }
+      if (!error && data && !data.error) {
+        setInfrastructureData(data);
+        console.log("Infrastructure data loaded:", data);
       }
     } catch (error) {
       console.error("Error fetching infrastructure data:", error);
@@ -551,24 +503,17 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   // Fetch Regrid parcel data
   const fetchParcelData = async (lat: number, lng: number, addr: string) => {
     setIsLoadingParcel(true);
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
     try {
-      const response = await fetch(`${baseUrl}/functions/v1/regrid-parcel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ lat, lng, address: addr }),
+      const { data, error } = await supabase.functions.invoke('regrid-parcel', {
+        body: { lat, lng, address: addr },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.found) {
-          setParcelData(data);
-          console.log("Parcel data loaded:", data);
-        } else {
-          console.log("No parcel found for address");
-        }
+      if (!error && data?.found) {
+        setParcelData(data);
+        console.log("Parcel data loaded:", data);
+      } else {
+        console.log("No parcel found for address");
       }
     } catch (error) {
       console.error("Error fetching parcel data:", error);
