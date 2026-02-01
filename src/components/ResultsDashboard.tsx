@@ -263,6 +263,40 @@ interface InfrastructureData {
   source: string;
 }
 
+interface ParcelData {
+  found: boolean;
+  parcelNumber: string | null;
+  accountNumber: string | null;
+  owner: string | null;
+  mailingAddress: string | null;
+  assessedValue: number | null;
+  landValue: number | null;
+  improvementValue: number | null;
+  acreage: number | null;
+  sqft: number | null;
+  zoning: string | null;
+  zoningDescription: string | null;
+  legalDescription: string | null;
+  saleDate: string | null;
+  salePrice: number | null;
+  yearBuilt: number | null;
+  buildingSqft: number | null;
+  address: string | null;
+  city: string | null;
+  county: string | null;
+  state: string | null;
+  zip: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  qoz: boolean;
+  qozTract: string | null;
+  censusTract: string | null;
+  assessorUrl: string | null;
+  geometry: any | null;
+  source: string;
+  lastUpdated: string | null;
+}
+
 const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboardProps) => {
   const [plssData, setPlssData] = useState<PLSSResult | null>(null);
   const [isLoadingPLSS, setIsLoadingPLSS] = useState(false);
@@ -286,6 +320,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [isLoadingCultural, setIsLoadingCultural] = useState(false);
   const [isLoadingSolar, setIsLoadingSolar] = useState(false);
   const [isLoadingInfrastructure, setIsLoadingInfrastructure] = useState(false);
+  const [parcelData, setParcelData] = useState<ParcelData | null>(null);
+  const [isLoadingParcel, setIsLoadingParcel] = useState(false);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -512,6 +548,35 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Fetch Regrid parcel data
+  const fetchParcelData = async (lat: number, lng: number, addr: string) => {
+    setIsLoadingParcel(true);
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    try {
+      const response = await fetch(`${baseUrl}/functions/v1/regrid-parcel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ lat, lng, address: addr }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.found) {
+          setParcelData(data);
+          console.log("Parcel data loaded:", data);
+        } else {
+          console.log("No parcel found for address");
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching parcel data:", error);
+    } finally {
+      setIsLoadingParcel(false);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
     const fetchAllPropertyData = async () => {
@@ -535,6 +600,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           fetchCulturalData(geocodeResult.lat, geocodeResult.lng);
           fetchSolarData(geocodeResult.lat, geocodeResult.lng);
           fetchInfrastructureData(geocodeResult.lat, geocodeResult.lng);
+          fetchParcelData(geocodeResult.lat, geocodeResult.lng, address);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -1508,6 +1574,119 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
             ))}
           </div>
         </section>
+
+        {/* Property Records from Regrid */}
+        {(parcelData?.found || isLoadingParcel) && (
+          <section className="mb-10">
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-6">Property Records</h2>
+            <div className="p-6 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/30">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold text-foreground">County Assessor Records</h3>
+                  <p className="text-xs text-muted-foreground">Powered by Regrid Parcel Data</p>
+                </div>
+              </div>
+              
+              {isLoadingParcel ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-emerald-500">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading property records...</span>
+                </div>
+              ) : parcelData?.found ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                      <span className="text-muted-foreground">Parcel Number</span>
+                      <span className="text-foreground font-mono text-sm">{parcelData.parcelNumber || 'N/A'}</span>
+                    </div>
+                    {parcelData.owner && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Owner</span>
+                        <span className="text-foreground font-medium">{parcelData.owner}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                      <span className="text-muted-foreground">County</span>
+                      <span className="text-foreground font-medium capitalize">{parcelData.county?.replace(/-/g, ' ') || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                      <span className="text-muted-foreground">Acreage</span>
+                      <span className="text-foreground font-medium">{parcelData.acreage?.toFixed(2) || 'N/A'} acres</span>
+                    </div>
+                    {parcelData.zoning && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Zoning</span>
+                        <span className="text-foreground font-medium">{parcelData.zoning}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {parcelData.assessedValue && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Assessed Value</span>
+                        <span className="text-emerald-500 font-semibold">${parcelData.assessedValue.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {parcelData.landValue && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Land Value</span>
+                        <span className="text-foreground font-medium">${parcelData.landValue.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {parcelData.improvementValue && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Improvement Value</span>
+                        <span className="text-foreground font-medium">${parcelData.improvementValue.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {parcelData.qoz && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Opportunity Zone</span>
+                        <span className="text-emerald-500 font-semibold">✓ Qualified</span>
+                      </div>
+                    )}
+                    {parcelData.censusTract && (
+                      <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                        <span className="text-muted-foreground">Census Tract</span>
+                        <span className="text-foreground font-mono text-sm">{parcelData.censusTract}</span>
+                      </div>
+                    )}
+                  </div>
+                  {parcelData.legalDescription && (
+                    <div className="col-span-full">
+                      <p className="text-muted-foreground text-sm mb-1">Legal Description</p>
+                      <p className="text-foreground text-sm font-mono bg-muted/30 p-3 rounded">{parcelData.legalDescription}</p>
+                    </div>
+                  )}
+                  {parcelData.zoningDescription && (
+                    <div className="col-span-full">
+                      <p className="text-muted-foreground text-sm mb-1">Zoning Description</p>
+                      <p className="text-foreground text-sm">{parcelData.zoningDescription}</p>
+                    </div>
+                  )}
+                  <div className="col-span-full flex justify-between items-center pt-2 border-t border-emerald-500/20">
+                    <span className="text-xs text-muted-foreground">Source: {parcelData.source} • Updated: {parcelData.lastUpdated || 'N/A'}</span>
+                    {parcelData.assessorUrl && (
+                      <a 
+                        href={parcelData.assessorUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-emerald-500 hover:underline flex items-center gap-1"
+                      >
+                        View County Assessor Record →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        )}
 
         {/* Development Suitability Add-Ons */}
         <section className="mb-10">
