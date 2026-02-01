@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.google-places]
 verify_jwt = false
+
+[functions.regrid-parcel]
+verify_jwt = false
