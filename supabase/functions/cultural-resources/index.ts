@@ -339,67 +339,64 @@ serve(async (req) => {
     ]);
 
     // Determine consultation requirements
+    // NOTE: Proximity alone does NOT require consultation - only if ON tribal land or federal undertaking
     let tribalConsultationRequired = false;
-    let tribalConsultationReason = "No tribal consultation anticipated";
+    let tribalConsultationReason = "No tribal consultation anticipated for private development";
     
     if (tribalData.onTribalLand) {
       tribalConsultationRequired = true;
       tribalConsultationReason = `Property is located on ${tribalData.nearest?.name || 'tribal'} land - formal tribal consultation required`;
-    } else if (tribalData.nearest && tribalData.nearest.distance < 0.5) {
+    } else if (tribalData.nearest && tribalData.nearest.distance < 0.25) {
+      // Only flag if directly adjacent (< 0.25 mi)
       tribalConsultationRequired = true;
-      tribalConsultationReason = `Property is ${tribalData.nearest.distance} miles from ${tribalData.nearest.name} - tribal consultation likely required due to proximity`;
-    } else if (tribalData.nearest && tribalData.nearest.distance < 2) {
-      tribalConsultationRequired = true;
-      tribalConsultationReason = `Property is ${tribalData.nearest.distance} miles from ${tribalData.nearest.name} - tribal consultation recommended for any federal undertaking`;
-    } else if (tribalData.within5Miles.length > 0) {
-      tribalConsultationReason = `Nearest tribal land (${tribalData.nearest?.name}) is ${tribalData.nearest?.distance} miles away - consultation may be required depending on project scope`;
+      tribalConsultationReason = `Property is directly adjacent to ${tribalData.nearest.name} (${tribalData.nearest.distance.toFixed(2)} mi) - consultation recommended`;
+    } else if (tribalData.nearest && tribalData.nearest.distance < 5) {
+      // Informational only - not a requirement
+      tribalConsultationReason = `Nearest tribal land: ${tribalData.nearest.name} (${tribalData.nearest.distance.toFixed(1)} mi away) - consultation only required for federal undertakings`;
     }
 
-    // Determine risk level
+    // Determine risk level - only "high" if actually ON tribal land or IN historic district
     let riskLevel: "high" | "moderate" | "low" = "low";
     
     if (tribalData.onTribalLand || nrhpData.inDistrict) {
       riskLevel = "high";
-    } else if (
-      (tribalData.nearest && tribalData.nearest.distance < 1) ||
-      nrhpData.properties.some(p => p.distance < 0.25)
-    ) {
-      riskLevel = "high";
-    } else if (
-      (tribalData.nearest && tribalData.nearest.distance < 3) ||
-      nrhpData.properties.length > 0
-    ) {
+    } else if (nrhpData.properties.some(p => p.distance < 0.1)) {
+      // Only high if NRHP property is directly adjacent (< 0.1 mi / ~500 ft)
+      riskLevel = "moderate";
+    } else if (tribalData.nearest && tribalData.nearest.distance < 0.25) {
+      // Moderate if directly adjacent to tribal land
       riskLevel = "moderate";
     }
+    // Otherwise stays "low" - proximity alone is not a risk factor
 
     // Determine if Section 106 review needed
-    const section106Required = tribalConsultationRequired || 
-                               nrhpData.inDistrict || 
-                               nrhpData.properties.some(p => p.distance < 0.5);
+    // Section 106 only applies to federal undertakings - not private development
+    // Only flag as "required" if ON tribal land or IN a historic district
+    const section106Required = tribalData.onTribalLand || nrhpData.inDistrict;
 
     // Generate recommendations
     const recommendations: string[] = [];
     
     if (tribalData.onTribalLand) {
       recommendations.push(`Initiate formal consultation with ${tribalData.nearest?.name} tribal government before any ground disturbance`);
+      recommendations.push("Phase I Archaeological Survey required before development");
     } else if (tribalConsultationRequired) {
-      recommendations.push(`Contact ${tribalData.nearest?.name} THPO (Tribal Historic Preservation Office) for consultation`);
+      recommendations.push(`Consider contacting ${tribalData.nearest?.name} THPO if project involves federal permits or funding`);
     }
     
     if (nrhpData.inDistrict) {
       recommendations.push(`Property is within ${nrhpData.districtName} Historic District - SHPO review required for exterior modifications`);
+      recommendations.push("Phase I Archaeological Survey likely required");
     }
     
-    if (nrhpData.properties.length > 0) {
-      recommendations.push("Request ARMS records check from NM Historic Preservation Division");
+    if (nrhpData.properties.length > 0 && nrhpData.properties[0].distance < 0.25) {
+      recommendations.push("Consider ARMS records check due to nearby historic property");
     }
     
-    if (section106Required) {
-      recommendations.push("Complete Section 106 cultural resources survey prior to federal permit application");
-    }
-    
+    // Default recommendation for all properties
     if (recommendations.length === 0) {
-      recommendations.push("Standard archaeological monitoring recommended during initial ground disturbance");
+      recommendations.push("No cultural resource restrictions identified for private development");
+      recommendations.push("Standard construction practices apply - stop work if artifacts discovered");
     }
 
     const result: CulturalResourcesResult = {
