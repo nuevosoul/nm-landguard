@@ -628,7 +628,16 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   };
 
   // Use property data from county assessor if available, then Regrid, then PLSS
-  const effectiveCounty = propertyData?.county || parcelData?.county || countyName;
+  // Regrid returns county like "rio-arriba", need to format it
+  const formatCounty = (county: string | null | undefined): string => {
+    if (!county) return "";
+    // Convert "rio-arriba" to "Rio Arriba County"
+    const formatted = county.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+    return formatted.includes('County') ? formatted : `${formatted} County`;
+  };
+  const effectiveCounty = propertyData?.county || formatCounty(parcelData?.county) || countyName;
   const effectiveLegalDesc = propertyData?.legalDescription || parcelData?.legalDescription || plssData?.legalDescription || "Loading...";
   const effectiveParcelId = propertyData?.parcelId || parcelData?.parcelNumber || "Not available";
   const effectiveAcreage = propertyData?.acreage 
@@ -670,8 +679,28 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     dataSource: propertyData?.source || "BLM PLSS / Geocoding",
   };
 
-  // Calculate overall risk score
-  const riskScore = 68; // Out of 100, higher = more risk
+  // Calculate overall risk score dynamically based on findings
+  const calculateRiskScore = (): number => {
+    let score = 30; // Base score (low risk)
+    
+    // Cultural resources risk
+    if (culturalData?.onTribalLand) score += 40;
+    else if (culturalData?.inHistoricDistrict) score += 35;
+    else if (culturalData?.tribalConsultationRequired) score += 20;
+    else if (culturalData?.nearestTribalLand && culturalData.nearestTribalLand.distance < 3) score += 10;
+    
+    // Flood risk
+    if (floodData?.sfha) score += 25;
+    else if (floodData?.riskLevel === "moderate") score += 10;
+    
+    // EPA risk
+    if (epaData?.summary?.overallRisk === "high") score += 25;
+    else if (epaData?.summary?.overallRisk === "moderate") score += 10;
+    
+    // Cap at 100
+    return Math.min(score, 100);
+  };
+  const riskScore = calculateRiskScore();
 
   // Build Cultural Resources status card based on real data
   const getCulturalResourcesCard = (): StatusCardProps => {
