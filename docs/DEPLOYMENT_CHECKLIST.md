@@ -79,7 +79,7 @@ supabase functions deploy verify-payment
 Stripe Dashboard → Developers → Webhooks → Add endpoint
 ```
 
-- URL: `https://snkdharivpouflpttllo.supabase.co/functions/v1/stripe-webhook`
+- URL: `https://blljytcfahrgtksbzkuh.supabase.co/functions/v1/stripe-webhook`
 - Events to subscribe:
   - `checkout.session.completed`
   - `checkout.session.expired`

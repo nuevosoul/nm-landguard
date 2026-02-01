@@ -118,7 +118,7 @@ Location: `~/clawd/scripts/rgdd-test-runner.sh`
 
 Run individual endpoint tests with curl:
 ```bash
-curl -s "https://snkdharivpouflpttllo.supabase.co/functions/v1/geocode" \
+curl -s "https://blljytcfahrgtksbzkuh.supabase.co/functions/v1/geocode" \
   -H "Content-Type: application/json" \
   -d '{"address": "ADDRESS_HERE"}'
 ```
