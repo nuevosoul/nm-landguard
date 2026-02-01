@@ -4,7 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+// Using global crypto API (Web Crypto)
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,10 +30,11 @@ interface IngestPayload {
 
 // Generate a stable ID from URL or content
 async function generateSourceId(item: IntelItem): Promise<string> {
-  const data = new TextEncoder().encode(item.url || item.title || item.content || Date.now().toString());
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const data = item.url || item.title || item.content || Date.now().toString();
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(data));
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
 serve(async (req) => {
@@ -136,9 +137,8 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Intel ingest error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
