@@ -372,10 +372,9 @@ serve(async (req) => {
       riskLevel = "moderate";
     }
 
-    // Determine if Section 106 review needed
-    const section106Required = tribalConsultationRequired || 
-                               nrhpData.inDistrict || 
-                               nrhpData.properties.some(p => p.distance < 0.5);
+    // Determine if Section 106 / Phase I review needed
+    // Only required when property is ON tribal land or IN a historic district
+    const section106Required = tribalData.onTribalLand || nrhpData.inDistrict;
 
     // Generate recommendations
     const recommendations: string[] = [];
