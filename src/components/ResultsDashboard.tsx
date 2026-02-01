@@ -1151,7 +1151,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               <img src={logoImage} alt="Rio Grande Due Diligence" className="h-10 w-auto" />
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="font-display text-xl font-semibold text-foreground">Environmental Due Diligence Report</h1>
+                  <h1 className="font-display text-xl font-semibold text-foreground">Rio Grande Due Diligence Report</h1>
                   {isSample && (
                     <span className="px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary border border-primary/30">
                       SAMPLE

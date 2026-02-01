@@ -372,7 +372,7 @@ const SearchCard = ({ onSearch }: SearchCardProps) => {
                     disabled={isSubmitDisabled()}
                   >
                     <Shield className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                    Run Environmental Analysis — $499
+                    Run Due Diligence — $499
                   </Button>
                 </form>
               </Tabs>
