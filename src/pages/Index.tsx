@@ -106,10 +106,13 @@ const Index = () => {
   };
 
   // Check if dev mode is enabled (bypass payment)
-  const isDevMode = () => {
+  const isDevMode = (): boolean => {
+    // Check URL search params (both window.location and React Router's searchParams)
     const urlParams = new URLSearchParams(window.location.search);
-    const hasDevParam = urlParams.get("dev") === "true";
+    const hasDevParam = urlParams.get("dev") === "true" || searchParams.get("dev") === "true";
+    // Check hostname for local development
     const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    console.log("[DEV CHECK] dev param:", hasDevParam, "localhost:", isLocalhost, "search:", window.location.search);
     return hasDevParam || isLocalhost;
   };
 
