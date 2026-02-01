@@ -843,7 +843,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     },
     {
       title: "Critical Habitat & ESA Compliance",
-      status: "neutral",
+      status: "caution" as const,
       statusText: "Verification Recommended",
       statusTooltip: "General Guidance: Site-specific ESA analysis requires USFWS IPaC query. Standard protections apply for migratory birds.",
       description: "Endangered Species Act compliance depends on location-specific critical habitat designations. For federal permits or funding, an official USFWS IPaC query is recommended.",

@@ -4,7 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
-import { createHash } from "https://deno.land/std@0.168.0/hash/mod.ts";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,10 +29,11 @@ interface IngestPayload {
 }
 
 // Generate a stable ID from URL or content
-function generateSourceId(item: IntelItem): string {
-  const hash = createHash("md5");
-  hash.update(item.url || item.title || item.content || Date.now().toString());
-  return hash.toString();
+async function generateSourceId(item: IntelItem): Promise<string> {
+  const data = new TextEncoder().encode(item.url || item.title || item.content || Date.now().toString());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
 serve(async (req) => {
@@ -79,7 +80,7 @@ serve(async (req) => {
 
     // Process each item
     for (const item of payload.items) {
-      const sourceId = item.source_id || generateSourceId(item);
+      const sourceId = item.source_id || await generateSourceId(item);
 
       try {
         const { error } = await supabase
@@ -135,8 +136,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Intel ingest error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

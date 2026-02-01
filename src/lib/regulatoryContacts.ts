@@ -920,7 +920,5 @@ export function getEssentialContacts(
 }
 
 // ============================================================================
-// TYPE EXPORTS
+// TYPE EXPORTS (already exported at interface definition)
 // ============================================================================
-
-export type { RegulatoryContact };
