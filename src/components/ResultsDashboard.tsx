@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
 import { getEssentialContacts, formatContactForDisplay } from "@/lib/regulatoryContacts";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import RiskRadarChart from "./RiskRadarChart";
 import ExportPackage from "./ExportPackage";
 import MapLayerControl from "./MapLayerControl";

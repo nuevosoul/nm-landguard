@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { geocodeAddress, type QueryType } from "@/lib/geocoding";
 import { Loader2, AlertTriangle, RefreshCw, Droplets, Satellite, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 
 interface GISMapProps {
   address: string;
