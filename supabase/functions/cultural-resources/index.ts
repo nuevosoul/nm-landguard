@@ -345,14 +345,13 @@ serve(async (req) => {
     if (tribalData.onTribalLand) {
       tribalConsultationRequired = true;
       tribalConsultationReason = `Property is located on ${tribalData.nearest?.name || 'tribal'} land - formal tribal consultation required`;
-    } else if (tribalData.nearest && tribalData.nearest.distance < 0.5) {
+    } else if (tribalData.nearest && tribalData.nearest.distance <= 0.25) {
       tribalConsultationRequired = true;
-      tribalConsultationReason = `Property is ${tribalData.nearest.distance} miles from ${tribalData.nearest.name} - tribal consultation likely required due to proximity`;
-    } else if (tribalData.nearest && tribalData.nearest.distance < 2) {
-      tribalConsultationRequired = true;
-      tribalConsultationReason = `Property is ${tribalData.nearest.distance} miles from ${tribalData.nearest.name} - tribal consultation recommended for any federal undertaking`;
+      tribalConsultationReason = `Property is ${tribalData.nearest.distance} miles from ${tribalData.nearest.name} - tribal consultation required due to immediate proximity`;
+    } else if (tribalData.nearest && tribalData.nearest.distance <= 1) {
+      tribalConsultationReason = `Property is ${tribalData.nearest.distance} miles from ${tribalData.nearest.name} - tribal consultation recommended but not required`;
     } else if (tribalData.within5Miles.length > 0) {
-      tribalConsultationReason = `Nearest tribal land (${tribalData.nearest?.name}) is ${tribalData.nearest?.distance} miles away - consultation may be required depending on project scope`;
+      tribalConsultationReason = `Nearest tribal land (${tribalData.nearest?.name}) is ${tribalData.nearest?.distance} miles away - no tribal consultation anticipated`;
     }
 
     // Determine risk level
