@@ -1401,34 +1401,38 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           </div>
         </section>
 
-        {/* Priority Alerts */}
-        <section className="mb-10">
-          <div className="p-5 rounded-xl bg-[hsl(var(--status-danger-bg))] border border-[hsl(var(--status-danger)/0.3)]">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-[hsl(var(--status-danger)/0.2)] flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-[hsl(var(--status-danger))]" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-[hsl(var(--status-danger))] mb-1">Priority Action Required</h3>
-                <p className="text-sm text-foreground mb-3">
-                  This property requires a Phase I Archaeological Survey before any ground-disturbing activities. 
-                  Failure to comply may result in work stoppages, fines, and project delays under NHPA Section 106.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-background border border-border">
-                    Est. Survey Cost: $3,000-$8,000
-                  </span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-background border border-border">
-                    Timeline: 4-8 weeks
-                  </span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-background border border-border">
-                    SHPO Review: 30 days
-                  </span>
+        {/* Priority Alerts - Only show if actually on tribal land or in historic district */}
+        {(culturalData?.onTribalLand || culturalData?.inHistoricDistrict) && (
+          <section className="mb-10">
+            <div className="p-5 rounded-xl bg-[hsl(var(--status-danger-bg))] border border-[hsl(var(--status-danger)/0.3)]">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-[hsl(var(--status-danger)/0.2)] flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-[hsl(var(--status-danger))]" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[hsl(var(--status-danger))] mb-1">Priority Action Required</h3>
+                  <p className="text-sm text-foreground mb-3">
+                    {culturalData?.onTribalLand 
+                      ? `This property is located on ${culturalData.nearestTribalLand?.name || 'tribal'} land. Formal tribal consultation and approval is required before any development activities.`
+                      : `This property is within ${culturalData?.historicDistrictName || 'a historic district'}. SHPO review is required for any exterior modifications or ground disturbance.`
+                    }
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-background border border-border">
+                      Est. Survey Cost: $3,000-$8,000
+                    </span>
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-background border border-border">
+                      Timeline: 4-8 weeks
+                    </span>
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-background border border-border">
+                      SHPO Review: 30 days
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Main Assessment Cards */}
         <section className="mb-10">
