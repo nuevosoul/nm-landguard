@@ -95,6 +95,7 @@ interface IntelAlert {
   topics: string[];
   min_score: number;
   delivery: string;
+  enabled: boolean;
 }
 
 function scoreItem(
@@ -292,8 +293,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Intel process error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
