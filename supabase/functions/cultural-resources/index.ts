@@ -1,3 +1,4 @@
+// v3: Census TIGER API + explicit ON/OFF status
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {

@@ -7,6 +7,7 @@ const corsHeaders = {
 
 const REGRID_TOKEN = Deno.env.get('REGRID_API_TOKEN');
 const REGRID_BASE_URL = 'https://app.regrid.com/api/v2';
+// v2: trigger redeploy to pick up secrets
 
 interface ParcelData {
   found: boolean;
