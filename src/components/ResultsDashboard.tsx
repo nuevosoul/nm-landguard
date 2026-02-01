@@ -1280,26 +1280,30 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                   
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Parcel ID (APN)</span>
+                      <span className="text-muted-foreground">Parcel Number</span>
                       <span className="font-mono text-foreground">
-                        {isLoadingProperty ? (
+                        {isLoadingParcel ? (
                           <span className="flex items-center gap-2">
                             <Loader2 className="w-3 h-3 animate-spin" />
                             <span className="text-muted-foreground">Loading...</span>
                           </span>
-                        ) : reportData.parcelId}
+                        ) : parcelData?.parcelNumber ? (
+                          parcelData.parcelNumber
+                        ) : (
+                          <span className="text-muted-foreground italic">Not available</span>
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Legal Description</span>
                       <span className="text-foreground text-right flex items-center gap-2 max-w-[200px]">
-                        {isLoadingPLSS || isLoadingProperty ? (
+                        {isLoadingParcel ? (
                           <>
                             <Loader2 className="w-3 h-3 animate-spin" />
                             <span className="text-muted-foreground">Loading...</span>
                           </>
-                        ) : reportData.legalDescription !== "Loading..." ? (
-                          <span className="truncate" title={reportData.legalDescription}>{reportData.legalDescription}</span>
+                        ) : parcelData?.legalDescription ? (
+                          <span className="truncate" title={parcelData.legalDescription}>{parcelData.legalDescription}</span>
                         ) : (
                           <span className="text-muted-foreground italic">Not available</span>
                         )}
@@ -1307,11 +1311,33 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     </div>
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Parcel Size</span>
-                      <span className="text-foreground">{reportData.acreage}</span>
+                      <span className="text-foreground">
+                        {isLoadingParcel ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="text-muted-foreground">Loading...</span>
+                          </span>
+                        ) : typeof parcelData?.acreage === "number" ? (
+                          `${parcelData.acreage.toFixed(2)} acres`
+                        ) : (
+                          <span className="text-muted-foreground italic">Not available</span>
+                        )}
+                      </span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-muted-foreground">Property Class</span>
-                      <span className="text-foreground">{reportData.zoning}</span>
+                      <span className="text-muted-foreground">Zoning</span>
+                      <span className="text-foreground">
+                        {isLoadingParcel ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="text-muted-foreground">Loading...</span>
+                          </span>
+                        ) : parcelData?.zoning ? (
+                          parcelData.zoning
+                        ) : (
+                          <span className="text-muted-foreground italic">Not available</span>
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>
