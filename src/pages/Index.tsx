@@ -12,7 +12,7 @@ import LoadingState from "@/components/LoadingState";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import Footer from "@/components/Footer";
 import SystemStatusTicker from "@/components/SystemStatusTicker";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 
 type AppState = "landing" | "payment" | "loading" | "results" | "sample";
