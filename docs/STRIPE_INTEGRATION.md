@@ -950,7 +950,7 @@ Use any future expiry date and any 3-digit CVC.
 
 2. **Stripe Dashboard:**
    - Go to Developers → Webhooks
-   - Add endpoint: `https://snkdharivpouflpttllo.supabase.co/functions/v1/stripe-webhook`
+   - Add endpoint: `https://blljytcfahrgtksbzkuh.supabase.co/functions/v1/stripe-webhook`
    - Select events: `checkout.session.completed`, `checkout.session.expired`
 
 ### End-to-End Test Checklist
