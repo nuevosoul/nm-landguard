@@ -627,12 +627,14 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
-  // Use property data from county assessor if available, otherwise use PLSS data
-  const effectiveCounty = propertyData?.county || countyName;
-  const effectiveLegalDesc = propertyData?.legalDescription || plssData?.legalDescription || "Loading...";
-  const effectiveParcelId = propertyData?.parcelId || "Not available";
+  // Use property data from county assessor if available, then Regrid, then PLSS
+  const effectiveCounty = propertyData?.county || parcelData?.county || countyName;
+  const effectiveLegalDesc = propertyData?.legalDescription || parcelData?.legalDescription || plssData?.legalDescription || "Loading...";
+  const effectiveParcelId = propertyData?.parcelId || parcelData?.parcelNumber || "Not available";
   const effectiveAcreage = propertyData?.acreage 
     ? `${propertyData.acreage.toFixed(2)} acres` 
+    : parcelData?.acreage 
+    ? `${parcelData.acreage.toFixed(2)} acres`
     : "Not available";
 
   const reportData = {
@@ -653,7 +655,7 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     parcelId: effectiveParcelId,
     legalDescription: effectiveLegalDesc,
     acreage: effectiveAcreage,
-    zoning: propertyData?.propertyClass || "R-1 Residential",
+    zoning: propertyData?.propertyClass || parcelData?.zoning || "R-1 Residential",
     jurisdiction: effectiveCounty.includes("County") ? effectiveCounty.replace(" County", "") : "New Mexico",
     county: effectiveCounty,
     // Owner info
