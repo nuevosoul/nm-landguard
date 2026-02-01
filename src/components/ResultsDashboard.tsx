@@ -1414,10 +1414,28 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <Landmark className="w-4 h-4 text-[hsl(var(--status-danger))]" />
+                    <Landmark className={`w-4 h-4 ${
+                      culturalData?.onTribalLand || culturalData?.inHistoricDistrict 
+                        ? "text-[hsl(var(--status-danger))]" 
+                        : culturalData?.riskLevel === "moderate" 
+                          ? "text-[hsl(var(--status-caution))]" 
+                          : "text-[hsl(var(--status-safe))]"
+                    }`} />
                     Cultural
                   </span>
-                  <span className="font-semibold text-[hsl(var(--status-danger))]">High Risk</span>
+                  <span className={`font-semibold ${
+                    culturalData?.onTribalLand || culturalData?.inHistoricDistrict 
+                      ? "text-[hsl(var(--status-danger))]" 
+                      : culturalData?.riskLevel === "moderate" 
+                        ? "text-[hsl(var(--status-caution))]" 
+                        : "text-[hsl(var(--status-safe))]"
+                  }`}>
+                    {culturalData?.onTribalLand || culturalData?.inHistoricDistrict 
+                      ? "High Risk" 
+                      : culturalData?.riskLevel === "moderate" 
+                        ? "Caution" 
+                        : "Clear"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">

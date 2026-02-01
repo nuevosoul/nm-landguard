@@ -169,9 +169,9 @@ export function generatePDFContent(data: ReportData): string {
     danger: { bg: "#fee2e2", text: "#991b1b", label: "High Risk" },
   };
 
-  const culturalConfig = statusColors[data.culturalStatus];
-  const waterConfig = statusColors[data.waterStatus];
-  const habitatConfig = statusColors[data.habitatStatus];
+  const culturalConfig = statusColors[data.culturalStatus || "caution"];
+  const waterConfig = statusColors[data.waterStatus || "caution"];
+  const habitatConfig = statusColors[data.habitatStatus || "safe"];
 
   // Generate well data section
   const wellSection = data.wellData ? generateWellSection(data.wellData) : '';
