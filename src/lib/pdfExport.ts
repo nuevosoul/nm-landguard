@@ -799,13 +799,17 @@ function generateCulturalSection(
   const findings: string[] = [];
   
   if (cd) {
-    // Tribal land proximity
-    if (cd.onTribalLand) {
-      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #991b1b; font-weight: 600;">ON TRIBAL LAND</span></div>`);
+    // Tribal land status - explicit ON or OFF
+    if (cd.onTribalLand && cd.nearestTribalLand) {
+      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #991b1b; font-weight: 600;">ON ${cd.nearestTribalLand.name.toUpperCase()}</span></div>`);
     } else if (cd.nearestTribalLand) {
-      findings.push(`<div class="finding-item"><span>Nearest Tribal Land</span><span>${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(2)} mi)</span></div>`);
+      // Explicitly OFF tribal land, show nearest
+      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #166534; font-weight: 600;">OFF tribal boundaries</span></div>`);
+      findings.push(`<div class="finding-item"><span>Nearest Tribal Land</span><span>${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(1)} mi)</span></div>`);
     } else {
-      findings.push(`<div class="finding-item"><span>Tribal Land Proximity</span><span>None within 5 miles</span></div>`);
+      // No tribal lands detected
+      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #166534;">OFF tribal boundaries</span></div>`);
+      findings.push(`<div class="finding-item"><span>Nearest Tribal Land</span><span>None identified within 10 miles</span></div>`);
     }
     
     // Tribal lands count

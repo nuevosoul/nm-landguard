@@ -690,16 +690,22 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     // Build findings from real data
     const findings: FindingItem[] = [];
     
-    // Tribal land findings
-    if (cd?.onTribalLand) {
-      findings.push({ label: "On Tribal Land", value: `Yes - ${cd.nearestTribalLand?.name || "Tribal land"}`, status: "danger" });
+    // Tribal land findings - explicit ON or OFF
+    if (cd?.onTribalLand && cd?.nearestTribalLand) {
+      findings.push({ label: "Tribal Land Status", value: `ON ${cd.nearestTribalLand.name}`, status: "danger" });
     } else if (cd?.nearestTribalLand) {
+      // Explicitly OFF tribal land
       const dist = cd.nearestTribalLand.distance;
+      findings.push({ label: "Tribal Land Status", value: "OFF tribal boundaries", status: "safe" });
       findings.push({ 
         label: `Nearest ${cd.nearestTribalLand.type || "Tribal Land"}`, 
-        value: `${cd.nearestTribalLand.name} (${dist.toFixed(2)} mi)`, 
-        status: dist < 1 ? "danger" : dist < 3 ? "caution" : "safe" 
+        value: `${cd.nearestTribalLand.name} (${dist.toFixed(1)} mi)`, 
+        status: dist < 1 ? "caution" : dist < 3 ? "caution" : "safe" 
       });
+    } else {
+      // No tribal lands detected within range
+      findings.push({ label: "Tribal Land Status", value: "OFF tribal boundaries", status: "safe" });
+      findings.push({ label: "Nearest Tribal Land", value: "None within 10 miles", status: "safe" });
     }
     
     // Tribal consultation
