@@ -47,11 +47,11 @@ export interface SolarData {
 }
 
 export interface InfrastructureData {
-  nearestFireStation: { name: string; distance: number; isoClass?: number };
-  nearestPolice: { name: string; distance: number };
-  nearestHospital: { name: string; distance: number };
-  nearestSchool: { name: string; distance: number };
-  nearestGrocery: { name: string; distance: number };
+  nearestFireStation: { name: string; distance: number; driveTime?: number; driveDistance?: number; isoClass?: number };
+  nearestPolice: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  nearestHospital: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  nearestSchool: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  nearestGrocery: { name: string; distance: number; driveTime?: number; driveDistance?: number };
   source: string;
 }
 
@@ -967,36 +967,38 @@ function generateInfrastructureSection(infraData: InfrastructureData): string {
         <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #3b82f6;">
           <div style="font-size: 11px; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nearest Fire Station</div>
           <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${infraData.nearestFireStation.name}</div>
-          <div style="font-size: 20px; font-weight: bold; color: #dc2626;">${infraData.nearestFireStation.distance} mi</div>
+          <div style="font-size: 20px; font-weight: bold; color: #dc2626;">${infraData.nearestFireStation.driveTime ? `${infraData.nearestFireStation.driveTime} min` : `${infraData.nearestFireStation.distance} mi`}</div>
+          ${infraData.nearestFireStation.driveDistance ? `<div style="font-size: 11px; color: #64748b;">${infraData.nearestFireStation.driveDistance} mi by road</div>` : ''}
           <div style="font-size: 11px; color: #64748b;">ISO Rating: ${getIsoClassDescription(infraData.nearestFireStation.isoClass)}</div>
         </div>
         <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #3b82f6;">
           <div style="font-size: 11px; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nearest Hospital</div>
           <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${infraData.nearestHospital.name}</div>
-          <div style="font-size: 20px; font-weight: bold; color: #059669;">${infraData.nearestHospital.distance} mi</div>
+          <div style="font-size: 20px; font-weight: bold; color: #059669;">${infraData.nearestHospital.driveTime ? `${infraData.nearestHospital.driveTime} min` : `${infraData.nearestHospital.distance} mi`}</div>
+          ${infraData.nearestHospital.driveDistance ? `<div style="font-size: 11px; color: #64748b;">${infraData.nearestHospital.driveDistance} mi by road</div>` : ''}
         </div>
       </div>
       
       <div class="finding-items">
         <div class="finding-item">
           <span>🚒 Nearest Fire Station</span>
-          <span>${infraData.nearestFireStation.distance} mi - ${infraData.nearestFireStation.name}</span>
+          <span>${infraData.nearestFireStation.driveTime ? `${infraData.nearestFireStation.driveTime} min (${infraData.nearestFireStation.driveDistance} mi)` : `${infraData.nearestFireStation.distance} mi`} - ${infraData.nearestFireStation.name}</span>
         </div>
         <div class="finding-item">
           <span>🚓 Nearest Police Station</span>
-          <span>${infraData.nearestPolice.distance} mi - ${infraData.nearestPolice.name}</span>
+          <span>${infraData.nearestPolice.driveTime ? `${infraData.nearestPolice.driveTime} min (${infraData.nearestPolice.driveDistance} mi)` : `${infraData.nearestPolice.distance} mi`} - ${infraData.nearestPolice.name}</span>
         </div>
         <div class="finding-item">
           <span>🏥 Nearest Hospital</span>
-          <span>${infraData.nearestHospital.distance} mi - ${infraData.nearestHospital.name}</span>
+          <span>${infraData.nearestHospital.driveTime ? `${infraData.nearestHospital.driveTime} min (${infraData.nearestHospital.driveDistance} mi)` : `${infraData.nearestHospital.distance} mi`} - ${infraData.nearestHospital.name}</span>
         </div>
         <div class="finding-item">
           <span>🏫 Nearest School</span>
-          <span>${infraData.nearestSchool.distance} mi - ${infraData.nearestSchool.name}</span>
+          <span>${infraData.nearestSchool.driveTime ? `${infraData.nearestSchool.driveTime} min (${infraData.nearestSchool.driveDistance} mi)` : `${infraData.nearestSchool.distance} mi`} - ${infraData.nearestSchool.name}</span>
         </div>
         <div class="finding-item">
           <span>🛒 Nearest Grocery</span>
-          <span>${infraData.nearestGrocery.distance} mi - ${infraData.nearestGrocery.name}</span>
+          <span>${infraData.nearestGrocery.driveTime ? `${infraData.nearestGrocery.driveTime} min (${infraData.nearestGrocery.driveDistance} mi)` : `${infraData.nearestGrocery.distance} mi`} - ${infraData.nearestGrocery.name}</span>
         </div>
       </div>
       

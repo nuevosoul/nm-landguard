@@ -7,9 +7,13 @@ const corsHeaders = {
 
 interface NearbyService {
   name: string;
-  distance: number; // in miles
+  distance: number; // in miles (straight-line)
+  driveTime?: number; // in minutes
+  driveDistance?: number; // in miles (road distance)
   address?: string;
   placeId?: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface InfrastructureData {
@@ -31,6 +35,55 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
             Math.sin(dLng/2) * Math.sin(dLng/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return Math.round(R * c * 10) / 10;
+}
+
+// Get drive times for multiple destinations using Distance Matrix API
+async function getDriveTimes(
+  originLat: number,
+  originLng: number,
+  destinations: { lat: number; lng: number; key: string }[],
+  apiKey: string
+): Promise<Map<string, { driveTime: number; driveDistance: number }>> {
+  const results = new Map<string, { driveTime: number; driveDistance: number }>();
+  
+  if (destinations.length === 0) return results;
+  
+  try {
+    const origin = `${originLat},${originLng}`;
+    const destStr = destinations.map(d => `${d.lat},${d.lng}`).join('|');
+    
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destStr}&units=imperial&key=${apiKey}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Distance Matrix API error: ${response.status}`);
+      return results;
+    }
+    
+    const data = await response.json();
+    
+    if (data.status !== 'OK' || !data.rows || !data.rows[0]?.elements) {
+      console.log('Distance Matrix returned no results');
+      return results;
+    }
+    
+    const elements = data.rows[0].elements;
+    destinations.forEach((dest, idx) => {
+      const element = elements[idx];
+      if (element.status === 'OK') {
+        results.set(dest.key, {
+          driveTime: Math.round(element.duration.value / 60), // seconds to minutes
+          driveDistance: Math.round(element.distance.value / 1609.34 * 10) / 10, // meters to miles
+        });
+      }
+    });
+    
+    console.log(`Distance Matrix returned ${results.size} drive times`);
+  } catch (error) {
+    console.error('Distance Matrix API error:', error);
+  }
+  
+  return results;
 }
 
 // Estimate ISO fire class based on distance (simplified)
@@ -78,6 +131,8 @@ async function findNearbyPlace(
       distance,
       address: place.vicinity,
       placeId: place.place_id,
+      lat: placeLat,
+      lng: placeLng,
     };
   } catch (error) {
     console.error(`Error finding ${type}:`, error);
@@ -152,23 +207,36 @@ serve(async (req) => {
       findNearbyPlace(lat, lng, 'supermarket', apiKey),
     ]);
 
+    // Build list of destinations for Distance Matrix API
+    const destinations: { lat: number; lng: number; key: string }[] = [];
+    if (fireStation?.lat && fireStation?.lng) destinations.push({ lat: fireStation.lat, lng: fireStation.lng, key: 'fire' });
+    if (police?.lat && police?.lng) destinations.push({ lat: police.lat, lng: police.lng, key: 'police' });
+    if (hospital?.lat && hospital?.lng) destinations.push({ lat: hospital.lat, lng: hospital.lng, key: 'hospital' });
+    if (school?.lat && school?.lng) destinations.push({ lat: school.lat, lng: school.lng, key: 'school' });
+    if (grocery?.lat && grocery?.lng) destinations.push({ lat: grocery.lat, lng: grocery.lng, key: 'grocery' });
+
+    // Get drive times for all destinations in a single API call
+    const driveTimes = await getDriveTimes(lat, lng, destinations, apiKey);
+
+    // Merge drive times into results
+    const addDriveTime = (service: NearbyService | null, key: string): NearbyService => {
+      if (!service) return { name: "Not found within 10 miles", distance: 10 };
+      const dt = driveTimes.get(key);
+      if (dt) {
+        return { ...service, driveTime: dt.driveTime, driveDistance: dt.driveDistance };
+      }
+      return service;
+    };
+
     const result: InfrastructureData = {
       nearestFireStation: fireStation 
-        ? { ...fireStation, isoClass: estimateIsoClass(fireStation.distance) }
+        ? { ...addDriveTime(fireStation, 'fire'), isoClass: estimateIsoClass(fireStation.distance) }
         : { name: "Not found within 10 miles", distance: 10, isoClass: 10 },
-      nearestPolice: police 
-        ? police 
-        : { name: "Not found within 10 miles", distance: 10 },
-      nearestHospital: hospital 
-        ? hospital 
-        : { name: "Not found within 10 miles", distance: 10 },
-      nearestSchool: school 
-        ? school 
-        : { name: "Not found within 10 miles", distance: 10 },
-      nearestGrocery: grocery 
-        ? grocery 
-        : { name: "Not found within 10 miles", distance: 10 },
-      source: "Google Places API",
+      nearestPolice: addDriveTime(police, 'police'),
+      nearestHospital: addDriveTime(hospital, 'hospital'),
+      nearestSchool: addDriveTime(school, 'school'),
+      nearestGrocery: addDriveTime(grocery, 'grocery'),
+      source: "Google Places API + Distance Matrix",
     };
 
     console.log(`Infrastructure lookup complete: Fire ${result.nearestFireStation.distance} mi, Hospital ${result.nearestHospital.distance} mi`);

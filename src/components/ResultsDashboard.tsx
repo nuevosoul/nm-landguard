@@ -3,7 +3,7 @@ import {
   AlertTriangle, AlertCircle, CheckCircle, Download, MapPin, Calendar, 
   FileText, Map, Scale, Shield, Building, Droplets, TreePine, Landmark,
   FileCheck, Clock, Hash, Users, Phone, ExternalLink, ChevronRight,
-  Gauge, BookOpen, AlertOctagon, Info, Loader2
+  Gauge, BookOpen, AlertOctagon, Info, Loader2, Signal, Wifi, Moon, Volume2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -255,11 +255,116 @@ interface SolarData {
 }
 
 interface InfrastructureData {
-  nearestFireStation: { name: string; distance: number; isoClass?: number };
-  nearestPolice: { name: string; distance: number };
-  nearestHospital: { name: string; distance: number };
-  nearestSchool: { name: string; distance: number };
-  nearestGrocery: { name: string; distance: number };
+  nearestFireStation: { name: string; distance: number; driveTime?: number; driveDistance?: number; isoClass?: number };
+  nearestPolice: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  nearestHospital: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  nearestSchool: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  nearestGrocery: { name: string; distance: number; driveTime?: number; driveDistance?: number };
+  source: string;
+}
+
+interface AirQualityData {
+  aqi: number;
+  category: "good" | "moderate" | "unhealthy_sensitive" | "unhealthy" | "very_unhealthy" | "hazardous";
+  categoryLabel: string;
+  dominantPollutant: string;
+  pollutants: {
+    pm25?: number;
+    pm10?: number;
+    o3?: number;
+    no2?: number;
+    co?: number;
+    so2?: number;
+  };
+  healthRecommendations?: string;
+  source: string;
+}
+
+interface PollenData {
+  overallRisk: "low" | "moderate" | "high" | "very_high";
+  overallRiskLabel: string;
+  grassPollen: { level: string; index: number };
+  treePollen: { level: string; index: number };
+  weedPollen: { level: string; index: number };
+  dominantType: string;
+  season: string;
+  healthTip?: string;
+  plantDescriptions?: string[];
+  source: string;
+}
+
+interface WeatherData {
+  currentTemp: number;
+  currentCondition: string;
+  humidity: number;
+  windSpeed: number;
+  uvIndex: number;
+  climate: {
+    avgHighSummer: number;
+    avgLowWinter: number;
+    avgAnnualPrecipitation: string;
+    avgSunnyDays: number;
+    snowDays: string;
+    climateZone: string;
+  };
+  seasonalNotes: string[];
+  source: string;
+}
+
+interface CellCoverageData {
+  overallCoverage: "excellent" | "good" | "fair" | "poor" | "none";
+  overallLabel: string;
+  carriers: {
+    name: string;
+    has4G: boolean;
+    has5G: boolean;
+    signalStrength: "strong" | "moderate" | "weak" | "none";
+  }[];
+  ruralNote: string;
+  recommendation: string;
+  source: string;
+}
+
+interface BroadbandData {
+  overallAvailability: "excellent" | "good" | "fair" | "limited" | "none";
+  overallLabel: string;
+  maxDownloadSpeed: string;
+  maxUploadSpeed: string;
+  providers: { name: string; technology: string; maxDown: number; maxUp: number }[];
+  hasFiber: boolean;
+  hasCable: boolean;
+  hasDSL: boolean;
+  hasFixedWireless: boolean;
+  hasSatellite: boolean;
+  starlinkNote: string;
+  recommendation: string;
+  source: string;
+}
+
+interface DarkSkyData {
+  bortleClass: number;
+  bortleLabel: string;
+  qualityRating: "exceptional" | "excellent" | "good" | "fair" | "poor" | "urban";
+  milkyWayVisible: boolean;
+  nakedEyeLimitingMag: number;
+  lightPollutionLevel: string;
+  nearestLightSource: string;
+  distanceToNearestCity: number;
+  stargazingNote: string;
+  bestViewingDirection: string;
+  source: string;
+}
+
+interface NoiseLevelData {
+  overallRating: "very_quiet" | "quiet" | "moderate" | "noisy" | "very_noisy";
+  overallLabel: string;
+  estimatedDecibels: string;
+  noiseSources: { type: string; name: string; distance: number; impact: string }[];
+  nearestHighway: { name: string; distance: number } | null;
+  nearestAirport: { name: string; distance: number; type: string } | null;
+  nearestRailroad: { distance: number } | null;
+  quietHours: string;
+  recommendation: string;
   source: string;
 }
 
@@ -322,6 +427,20 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [isLoadingInfrastructure, setIsLoadingInfrastructure] = useState(false);
   const [parcelData, setParcelData] = useState<ParcelData | null>(null);
   const [isLoadingParcel, setIsLoadingParcel] = useState(false);
+  const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
+  const [isLoadingAirQuality, setIsLoadingAirQuality] = useState(false);
+  const [pollenData, setPollenData] = useState<PollenData | null>(null);
+  const [isLoadingPollen, setIsLoadingPollen] = useState(false);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+  const [cellCoverageData, setCellCoverageData] = useState<CellCoverageData | null>(null);
+  const [isLoadingCellCoverage, setIsLoadingCellCoverage] = useState(false);
+  const [broadbandData, setBroadbandData] = useState<BroadbandData | null>(null);
+  const [isLoadingBroadband, setIsLoadingBroadband] = useState(false);
+  const [darkSkyData, setDarkSkyData] = useState<DarkSkyData | null>(null);
+  const [isLoadingDarkSky, setIsLoadingDarkSky] = useState(false);
+  const [noiseLevelData, setNoiseLevelData] = useState<NoiseLevelData | null>(null);
+  const [isLoadingNoiseLevel, setIsLoadingNoiseLevel] = useState(false);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -512,6 +631,146 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Fetch Air Quality data
+  const fetchAirQualityData = async (lat: number, lng: number) => {
+    setIsLoadingAirQuality(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('air-quality', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setAirQualityData(data);
+        console.log("Air quality data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching air quality data:", error);
+    } finally {
+      setIsLoadingAirQuality(false);
+    }
+  };
+
+  // Fetch Pollen data
+  const fetchPollenData = async (lat: number, lng: number) => {
+    setIsLoadingPollen(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('pollen', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setPollenData(data);
+        console.log("Pollen data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching pollen data:", error);
+    } finally {
+      setIsLoadingPollen(false);
+    }
+  };
+
+  // Fetch Weather/Climate data
+  const fetchWeatherData = async (lat: number, lng: number) => {
+    setIsLoadingWeather(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('weather', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setWeatherData(data);
+        console.log("Weather data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching weather data:", error);
+    } finally {
+      setIsLoadingWeather(false);
+    }
+  };
+
+  // Fetch Cell Coverage data
+  const fetchCellCoverageData = async (lat: number, lng: number) => {
+    setIsLoadingCellCoverage(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('cell-coverage', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setCellCoverageData(data);
+        console.log("Cell coverage data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching cell coverage data:", error);
+    } finally {
+      setIsLoadingCellCoverage(false);
+    }
+  };
+
+  // Fetch Broadband/Internet data
+  const fetchBroadbandData = async (lat: number, lng: number) => {
+    setIsLoadingBroadband(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('broadband', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setBroadbandData(data);
+        console.log("Broadband data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching broadband data:", error);
+    } finally {
+      setIsLoadingBroadband(false);
+    }
+  };
+
+  // Fetch Dark Sky / Light Pollution data
+  const fetchDarkSkyData = async (lat: number, lng: number) => {
+    setIsLoadingDarkSky(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('dark-sky', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setDarkSkyData(data);
+        console.log("Dark sky data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching dark sky data:", error);
+    } finally {
+      setIsLoadingDarkSky(false);
+    }
+  };
+
+  // Fetch Noise Level data
+  const fetchNoiseLevelData = async (lat: number, lng: number) => {
+    setIsLoadingNoiseLevel(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('noise-level', {
+        body: { lat, lng },
+      });
+
+      if (!error && data && !data.error) {
+        setNoiseLevelData(data);
+        console.log("Noise level data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching noise level data:", error);
+    } finally {
+      setIsLoadingNoiseLevel(false);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
     const fetchAllPropertyData = async () => {
@@ -536,6 +795,13 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           fetchSolarData(geocodeResult.lat, geocodeResult.lng);
           fetchInfrastructureData(geocodeResult.lat, geocodeResult.lng);
           fetchParcelData(geocodeResult.lat, geocodeResult.lng, address);
+          fetchAirQualityData(geocodeResult.lat, geocodeResult.lng);
+          fetchPollenData(geocodeResult.lat, geocodeResult.lng);
+          fetchWeatherData(geocodeResult.lat, geocodeResult.lng);
+          fetchCellCoverageData(geocodeResult.lat, geocodeResult.lng);
+          fetchBroadbandData(geocodeResult.lat, geocodeResult.lng);
+          fetchDarkSkyData(geocodeResult.lat, geocodeResult.lng);
+          fetchNoiseLevelData(geocodeResult.lat, geocodeResult.lng);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -603,8 +869,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     jurisdiction: effectiveCounty.includes("County") ? effectiveCounty.replace(" County", "") : "New Mexico",
     county: effectiveCounty,
     // Owner info
-    owner: propertyData?.owner || "Not available",
-    ownerAddress: propertyData?.ownerAddress || "Not available",
+    owner: propertyData?.owner || parcelData?.owner || "Not available",
+    ownerAddress: propertyData?.ownerAddress || parcelData?.mailingAddress || "Not available",
     // Value info
     landValue: propertyData?.landValue || 0,
     improvementValue: propertyData?.improvementValue || 0,
@@ -1003,6 +1269,188 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
         { 
           label: "Drainage", 
           value: elevationData?.drainageClass?.split(" (")[0] || "N/A"
+        },
+      ]
+    },
+    {
+      icon: Shield,
+      title: "Air Quality",
+      items: [
+        { 
+          label: "Air Quality Index (AQI)", 
+          value: airQualityData ? `${airQualityData.aqi} (${airQualityData.categoryLabel})` : (isLoadingAirQuality ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Dominant Pollutant", 
+          value: airQualityData?.dominantPollutant || "N/A"
+        },
+        { 
+          label: "PM2.5", 
+          value: airQualityData?.pollutants?.pm25 ? `${airQualityData.pollutants.pm25} µg/m³` : "N/A"
+        },
+        { 
+          label: "Ozone (O₃)", 
+          value: airQualityData?.pollutants?.o3 ? `${airQualityData.pollutants.o3} ppb` : "N/A"
+        },
+      ]
+    },
+    {
+      icon: TreePine,
+      title: "Pollen & Allergens",
+      items: [
+        { 
+          label: "Overall Pollen Level", 
+          value: pollenData ? `${pollenData.overallRiskLabel}` : (isLoadingPollen ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Tree Pollen", 
+          value: pollenData?.treePollen?.level || "N/A"
+        },
+        { 
+          label: "Grass Pollen", 
+          value: pollenData?.grassPollen?.level || "N/A"
+        },
+        { 
+          label: "Weed Pollen", 
+          value: pollenData?.weedPollen?.level || "N/A"
+        },
+        { 
+          label: "Season", 
+          value: pollenData?.season || "N/A"
+        },
+      ]
+    },
+    {
+      icon: Calendar,
+      title: "Climate & Weather",
+      items: [
+        { 
+          label: "Climate Zone", 
+          value: weatherData?.climate?.climateZone || (isLoadingWeather ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Avg Summer High", 
+          value: weatherData?.climate?.avgHighSummer ? `${weatherData.climate.avgHighSummer}°F` : "N/A"
+        },
+        { 
+          label: "Avg Winter Low", 
+          value: weatherData?.climate?.avgLowWinter ? `${weatherData.climate.avgLowWinter}°F` : "N/A"
+        },
+        { 
+          label: "Annual Precipitation", 
+          value: weatherData?.climate?.avgAnnualPrecipitation || "N/A"
+        },
+        { 
+          label: "Sunny Days/Year", 
+          value: weatherData?.climate?.avgSunnyDays ? `${weatherData.climate.avgSunnyDays} days` : "N/A"
+        },
+        { 
+          label: "Snow Days", 
+          value: weatherData?.climate?.snowDays || "N/A"
+        },
+      ]
+    },
+    {
+      icon: Signal,
+      title: "Cell Coverage",
+      items: [
+        { 
+          label: "Overall Coverage", 
+          value: cellCoverageData?.overallLabel || (isLoadingCellCoverage ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Best Carrier", 
+          value: cellCoverageData?.carriers?.[0]?.name || "N/A"
+        },
+        { 
+          label: "4G LTE Available", 
+          value: cellCoverageData?.carriers?.some(c => c.has4G) ? "Yes" : "No"
+        },
+        { 
+          label: "5G Available", 
+          value: cellCoverageData?.carriers?.some(c => c.has5G) ? "Yes" : "No"
+        },
+        { 
+          label: "Recommendation", 
+          value: cellCoverageData?.recommendation?.split(',')[0] || "N/A"
+        },
+      ]
+    },
+    {
+      icon: Wifi,
+      title: "Internet/Broadband",
+      items: [
+        { 
+          label: "Availability", 
+          value: broadbandData?.overallLabel || (isLoadingBroadband ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Max Download", 
+          value: broadbandData?.maxDownloadSpeed || "N/A"
+        },
+        { 
+          label: "Max Upload", 
+          value: broadbandData?.maxUploadSpeed || "N/A"
+        },
+        { 
+          label: "Fiber Available", 
+          value: broadbandData?.hasFiber ? "Yes" : "No"
+        },
+        { 
+          label: "Best Option", 
+          value: broadbandData?.providers?.[0]?.name || "Starlink"
+        },
+      ]
+    },
+    {
+      icon: Moon,
+      title: "Dark Sky / Stargazing",
+      items: [
+        { 
+          label: "Bortle Class", 
+          value: darkSkyData ? `${darkSkyData.bortleClass} - ${darkSkyData.bortleLabel}` : (isLoadingDarkSky ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Light Pollution", 
+          value: darkSkyData?.lightPollutionLevel || "N/A"
+        },
+        { 
+          label: "Milky Way Visible", 
+          value: darkSkyData?.milkyWayVisible ? "Yes" : "No"
+        },
+        { 
+          label: "Nearest City Lights", 
+          value: darkSkyData?.nearestLightSource || "N/A"
+        },
+        { 
+          label: "Best Viewing", 
+          value: darkSkyData?.bestViewingDirection || "N/A"
+        },
+      ]
+    },
+    {
+      icon: Volume2,
+      title: "Noise & Quiet",
+      items: [
+        { 
+          label: "Noise Level", 
+          value: noiseLevelData?.overallLabel || (isLoadingNoiseLevel ? "Loading..." : "N/A")
+        },
+        { 
+          label: "Estimated dB", 
+          value: noiseLevelData?.estimatedDecibels || "N/A"
+        },
+        { 
+          label: "Nearest Highway", 
+          value: noiseLevelData?.nearestHighway ? `${noiseLevelData.nearestHighway.name} (${noiseLevelData.nearestHighway.distance} mi)` : "None nearby"
+        },
+        { 
+          label: "Nearest Airport", 
+          value: noiseLevelData?.nearestAirport ? `${noiseLevelData.nearestAirport.distance} mi` : "None nearby"
+        },
+        { 
+          label: "Quiet Hours", 
+          value: noiseLevelData?.quietHours?.split('.')[0] || "N/A"
         },
       ]
     },
@@ -1782,7 +2230,14 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                 ) : (
                   <>
                     <p className="text-lg font-semibold text-foreground">{developmentAddOns.infrastructure.nearestFireStation.name}</p>
-                    <p className="text-2xl font-bold text-blue-500">{developmentAddOns.infrastructure.nearestFireStation.distance} mi</p>
+                    <p className="text-2xl font-bold text-blue-500">
+                      {developmentAddOns.infrastructure.nearestFireStation.driveTime 
+                        ? `${developmentAddOns.infrastructure.nearestFireStation.driveTime} min` 
+                        : `${developmentAddOns.infrastructure.nearestFireStation.distance} mi`}
+                    </p>
+                    {developmentAddOns.infrastructure.nearestFireStation.driveDistance && (
+                      <p className="text-xs text-muted-foreground">{developmentAddOns.infrastructure.nearestFireStation.driveDistance} mi by road</p>
+                    )}
                     {developmentAddOns.infrastructure.nearestFireStation.isoClass > 0 && (
                       <span className="inline-block mt-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-500 text-xs font-semibold uppercase">
                         ISO Class {developmentAddOns.infrastructure.nearestFireStation.isoClass}
@@ -1795,23 +2250,43 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between py-1 border-b border-blue-500/20">
                   <span className="text-muted-foreground">Nearest Fire Station</span>
-                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestFireStation.distance} mi</span>
+                  <span className="text-foreground font-medium">
+                    {developmentAddOns.infrastructure.nearestFireStation.driveTime 
+                      ? `${developmentAddOns.infrastructure.nearestFireStation.driveTime} min (${developmentAddOns.infrastructure.nearestFireStation.driveDistance} mi)` 
+                      : `${developmentAddOns.infrastructure.nearestFireStation.distance} mi`}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-blue-500/20">
                   <span className="text-muted-foreground">Nearest Police</span>
-                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestPolice.distance} mi</span>
+                  <span className="text-foreground font-medium">
+                    {developmentAddOns.infrastructure.nearestPolice.driveTime 
+                      ? `${developmentAddOns.infrastructure.nearestPolice.driveTime} min (${developmentAddOns.infrastructure.nearestPolice.driveDistance} mi)` 
+                      : `${developmentAddOns.infrastructure.nearestPolice.distance} mi`}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-blue-500/20">
                   <span className="text-muted-foreground">Nearest Hospital</span>
-                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestHospital.distance} mi</span>
+                  <span className="text-foreground font-medium">
+                    {developmentAddOns.infrastructure.nearestHospital.driveTime 
+                      ? `${developmentAddOns.infrastructure.nearestHospital.driveTime} min (${developmentAddOns.infrastructure.nearestHospital.driveDistance} mi)` 
+                      : `${developmentAddOns.infrastructure.nearestHospital.distance} mi`}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-blue-500/20">
                   <span className="text-muted-foreground">Nearest School</span>
-                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestSchool.distance} mi</span>
+                  <span className="text-foreground font-medium">
+                    {developmentAddOns.infrastructure.nearestSchool.driveTime 
+                      ? `${developmentAddOns.infrastructure.nearestSchool.driveTime} min (${developmentAddOns.infrastructure.nearestSchool.driveDistance} mi)` 
+                      : `${developmentAddOns.infrastructure.nearestSchool.distance} mi`}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-blue-500/20">
                   <span className="text-muted-foreground">Nearest Grocery</span>
-                  <span className="text-foreground font-medium">{developmentAddOns.infrastructure.nearestGrocery.distance} mi</span>
+                  <span className="text-foreground font-medium">
+                    {developmentAddOns.infrastructure.nearestGrocery.driveTime 
+                      ? `${developmentAddOns.infrastructure.nearestGrocery.driveTime} min (${developmentAddOns.infrastructure.nearestGrocery.driveDistance} mi)` 
+                      : `${developmentAddOns.infrastructure.nearestGrocery.distance} mi`}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-muted-foreground text-xs">Source</span>
