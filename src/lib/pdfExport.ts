@@ -1,4 +1,6 @@
-// PDF Export functionality using browser print-to-PDF
+// PDF Export functionality - Comprehensive 17-Pillar Report
+// Version 3.0 - Full Livability Analysis
+
 export interface WellData {
   objectId: number;
   lat: number;
@@ -75,6 +77,104 @@ export interface EPAData {
   source: string;
 }
 
+// NEW: Livability Data Interfaces
+export interface AirQualityData {
+  aqi: number;
+  category: string;
+  dominantPollutant: string;
+  pm25: number;
+  pm10?: number;
+  ozone?: number;
+  no2?: number;
+  healthRecommendations?: string;
+  source: string;
+}
+
+export interface PollenData {
+  grassPollen: { level: string; index: number };
+  treePollen: { level: string; index: number };
+  weedPollen: { level: string; index: number };
+  overallLevel: string;
+  season: string;
+  source: string;
+}
+
+export interface WeatherData {
+  avgHighSummer: number;
+  avgLowWinter: number;
+  annualPrecipitation: number;
+  annualSnowfall: number;
+  sunnyDaysPerYear: number;
+  growingSeasonDays: number;
+  climate: string;
+  source: string;
+}
+
+export interface CellCoverageData {
+  overallCoverage: "excellent" | "good" | "fair" | "poor" | "none";
+  carriers: { name: string; coverage: string; has5G: boolean }[];
+  rural: boolean;
+  source: string;
+}
+
+export interface BroadbandData {
+  maxDownload: number;
+  maxUpload: number;
+  technologies: string[];
+  providers: { name: string; maxSpeed: number; technology: string }[];
+  fiberAvailable: boolean;
+  starlinkEligible: boolean;
+  source: string;
+}
+
+export interface DarkSkyData {
+  bortleClass: number;
+  bortleDescription: string;
+  sqm: number;
+  milkyWayVisible: boolean;
+  lightPollutionLevel: "pristine" | "dark" | "rural" | "suburban" | "urban" | "bright";
+  nearestDarkSkyPark?: string;
+  source: string;
+}
+
+export interface NoiseLevelData {
+  overallLevel: "quiet" | "moderate" | "noisy";
+  estimatedDecibels: number;
+  nearestHighway?: { name: string; distance: number };
+  nearestAirport?: { name: string; distance: number; type: string };
+  nearestRailroad?: { distance: number };
+  flightPath: boolean;
+  source: string;
+}
+
+export interface StreetViewData {
+  available: boolean;
+  imageUrl?: string;
+  heading?: number;
+  pitch?: number;
+  source: string;
+}
+
+export interface ElevationData {
+  elevation: number;
+  slope?: number;
+  aspect?: string;
+  source: string;
+}
+
+export interface OwnerData {
+  name: string;
+  mailingAddress?: string;
+  ownershipType?: string;
+}
+
+export interface PropertyValueData {
+  landValue: number;
+  improvementValue: number;
+  totalValue: number;
+  taxYear: string;
+}
+
 export interface ReportData {
   address: string;
   reportId?: string;
@@ -93,6 +193,8 @@ export interface ReportData {
   // Owner info
   owner?: string;
   ownerAddress?: string;
+  ownerData?: OwnerData;
+  propertyValues?: PropertyValueData;
   dataSource?: string;
   landValue?: number;
   improvementValue?: number;
@@ -111,56 +213,41 @@ export interface ReportData {
   parcelGeometry?: number[][][] | null;
   // Pre-generated satellite map URL (base64)
   satelliteMapUrl?: string;
-  // Cultural Resources Data
+  streetViewUrl?: string;
+  // Core Environmental Data
   culturalData?: CulturalResourcesData;
-  // Solar API Data
   solarData?: SolarData;
-  // Infrastructure API Data
   infrastructureData?: InfrastructureData;
-  // FEMA Flood Zone Data
   floodData?: FloodData;
-  // EPA Environmental Data
   epaData?: EPAData;
+  elevationData?: ElevationData;
+  // NEW: Livability Data
+  airQualityData?: AirQualityData;
+  pollenData?: PollenData;
+  weatherData?: WeatherData;
+  cellCoverageData?: CellCoverageData;
+  broadbandData?: BroadbandData;
+  darkSkyData?: DarkSkyData;
+  noiseLevelData?: NoiseLevelData;
+  streetViewData?: StreetViewData;
 }
 
-function generateGoogleStaticMapUrl(lat: number, lng: number, parcelGeometry?: number[][][] | null): string {
-  // Google Static Maps API with satellite imagery and parcel boundary
-  const zoom = 18;
-  const width = 640;
-  const height = 400;
-  const mapType = "satellite";
-  
-  // Base URL - note: requires API key to be passed from edge function
-  // For PDF, we'll construct the URL and the edge function will sign it
-  let url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${width}x${height}&maptype=${mapType}&scale=2`;
-  
-  // Add parcel boundary as a polygon path
-  if (parcelGeometry && parcelGeometry.length > 0 && parcelGeometry[0].length > 0) {
-    // Get the first ring (exterior boundary)
-    const ring = parcelGeometry[0];
-    // Google Static Maps uses "lat,lng" format separated by |
-    // Path format: path=color:0xFFD700|weight:3|fillcolor:0xFFD70040|lat1,lng1|lat2,lng2|...
-    const pathPoints = ring.map(coord => `${coord[0].toFixed(6)},${coord[1].toFixed(6)}`).join('|');
-    url += `&path=color:0xFFD700FF|weight:4|fillcolor:0xFFD70030|${pathPoints}`;
-  }
-  
-  // Add center marker
-  url += `&markers=color:blue|${lat},${lng}`;
-  
-  return url;
-}
+// Helper function for status colors
+const getStatusStyle = (status: "safe" | "caution" | "danger" | "neutral" = "neutral") => {
+  const styles = {
+    safe: { bg: "#dcfce7", text: "#166534", border: "#4ade80" },
+    caution: { bg: "#fef3c7", text: "#92400e", border: "#fbbf24" },
+    danger: { bg: "#fee2e2", text: "#991b1b", border: "#f87171" },
+    neutral: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
+  };
+  return styles[status];
+};
 
-function generateStaticMapUrl(lat: number, lng: number, wells: WellData[] = []): string {
-  // Use OpenStreetMap static tiles via a static map service
-  // For a simple static map, we'll use a tile URL pattern
-  const zoom = 15;
-  const width = 600;
-  const height = 300;
-  
-  // Generate OSM-based static map URL using MapTiler or similar
-  // Note: For production, you'd want a proper static map API
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01}%2C${lat-0.008}%2C${lng+0.01}%2C${lat+0.008}&layer=mapnik&marker=${lat}%2C${lng}`;
-}
+// Helper to format numbers with commas
+const formatNumber = (num: number): string => num.toLocaleString();
+
+// Helper to format currency
+const formatCurrency = (num: number): string => `$${num.toLocaleString()}`;
 
 export function generatePDFContent(data: ReportData): string {
   const statusColors = {
@@ -173,28 +260,31 @@ export function generatePDFContent(data: ReportData): string {
   const waterConfig = statusColors[data.waterStatus || "caution"];
   const habitatConfig = statusColors[data.habitatStatus || "safe"];
 
-  // Generate well data section
-  const wellSection = data.wellData ? generateWellSection(data.wellData) : '';
+  // Calculate pillar count
+  const pillarCount = 17;
   
-  // Generate cultural resources section
-  const culturalSection = generateCulturalSection(data.culturalData, culturalConfig);
-  
-  // Generate solar section
-  const solarSection = data.solarData ? generateSolarSection(data.solarData) : '';
-  
-  // Generate infrastructure section
-  const infrastructureSection = data.infrastructureData ? generateInfrastructureSection(data.infrastructureData) : '';
-  
-  // Generate FEMA flood zone section
-  const floodSection = data.floodData ? generateFloodSection(data.floodData) : '';
-  
-  // Generate EPA environmental section
-  const epaSection = data.epaData ? generateEPASection(data.epaData) : '';
-  
-  // Generate map section with satellite image and parcel boundary
-  const mapSection = data.lat && data.lng 
-    ? generateMapSection(data.lat, data.lng, data.wellData?.wells || [], data.parcelGeometry, data.satelliteMapUrl) 
-    : '';
+  // Generate all sections
+  const sections = {
+    propertyViews: generatePropertyViewsSection(data),
+    ownerInfo: generateOwnerSection(data),
+    executiveSummary: generateExecutiveSummary(data),
+    cultural: generateCulturalSection(data.culturalData, culturalConfig),
+    water: generateWaterSection(data, waterConfig),
+    wells: data.wellData ? generateWellSection(data.wellData) : '',
+    habitat: generateHabitatSection(habitatConfig),
+    flood: data.floodData ? generateFloodSection(data.floodData) : '',
+    epa: data.epaData ? generateEPASection(data.epaData) : '',
+    solar: data.solarData ? generateSolarSection(data.solarData) : '',
+    infrastructure: data.infrastructureData ? generateInfrastructureSection(data.infrastructureData) : '',
+    airQuality: data.airQualityData ? generateAirQualitySection(data.airQualityData) : '',
+    pollen: data.pollenData ? generatePollenSection(data.pollenData) : '',
+    weather: data.weatherData ? generateWeatherSection(data.weatherData) : '',
+    cellCoverage: data.cellCoverageData ? generateCellCoverageSection(data.cellCoverageData) : '',
+    broadband: data.broadbandData ? generateBroadbandSection(data.broadbandData) : '',
+    darkSky: data.darkSkyData ? generateDarkSkySection(data.darkSkyData) : '',
+    noise: data.noiseLevelData ? generateNoiseSection(data.noiseLevelData) : '',
+    elevation: data.elevationData ? generateElevationSection(data.elevationData) : '',
+  };
 
   return `
 <!DOCTYPE html>
@@ -204,139 +294,242 @@ export function generatePDFContent(data: ReportData): string {
   <title>Rio Grande Due Diligence Report - ${data.reportId}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    @page {
+      size: letter;
+      margin: 0.5in;
+    }
+    
     body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
       color: #1e293b;
       line-height: 1.5;
       background: white;
+      font-size: 11px;
     }
+    
     .page { 
-      padding: 40px; 
-      max-width: 800px; 
+      padding: 30px 40px; 
+      max-width: 850px; 
       margin: 0 auto;
       page-break-after: always;
     }
-    .page:last-child {
-      page-break-after: auto;
-    }
+    .page:last-child { page-break-after: auto; }
+    
+    /* Header Styles */
     .header { 
       display: flex; 
       justify-content: space-between; 
       align-items: flex-start;
-      border-bottom: 2px solid #d4a574;
-      padding-bottom: 20px;
-      margin-bottom: 30px;
-    }
-    .logo { 
-      font-size: 24px; 
-      font-weight: bold; 
-      color: #0f172a;
-    }
-    .logo-sub { 
-      font-size: 12px; 
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .report-info { text-align: right; }
-    .report-id { 
-      font-size: 14px; 
-      font-weight: 600;
-      color: #d4a574;
-    }
-    .report-date { 
-      font-size: 12px; 
-      color: #64748b; 
-    }
-    
-    h1 { font-size: 20px; color: #0f172a; margin-bottom: 20px; }
-    h2 { font-size: 16px; color: #0f172a; margin: 20px 0 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-    h3 { font-size: 14px; color: #334155; margin: 16px 0 8px; }
-    
-    .property-section {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 20px;
+      border-bottom: 3px solid #0f172a;
+      padding-bottom: 16px;
       margin-bottom: 24px;
     }
-    .property-address { 
-      font-size: 18px; 
+    .logo { 
+      font-size: 22px; 
+      font-weight: 700; 
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .logo-accent { color: #d97706; }
+    .logo-sub { 
+      font-size: 10px; 
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 2px;
+    }
+    .report-meta { text-align: right; }
+    .report-id { 
+      font-size: 12px; 
       font-weight: 600;
       color: #0f172a;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+    .report-date { font-size: 10px; color: #64748b; margin-top: 2px; }
+    .report-validity {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 9px;
+      font-weight: 600;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    
+    /* Title */
+    .report-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0f172a;
       margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .report-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+    
+    /* Property Section */
+    .property-card {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .property-address { 
+      font-size: 16px; 
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
     }
     .property-county { 
-      font-size: 14px; 
+      font-size: 12px; 
       color: #64748b;
       margin-bottom: 16px;
     }
     .property-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 24px;
     }
     .property-item { 
       display: flex; 
       justify-content: space-between; 
-      font-size: 13px;
-      padding: 4px 0;
+      font-size: 11px;
+      padding: 6px 0;
       border-bottom: 1px solid #e2e8f0;
     }
     .property-label { color: #64748b; }
-    .property-value { font-weight: 500; color: #0f172a; }
+    .property-value { font-weight: 600; color: #0f172a; }
     
-    .risk-summary {
-      display: flex;
-      gap: 16px;
+    /* Section Headers */
+    h2 { 
+      font-size: 14px; 
+      font-weight: 700;
+      color: #0f172a; 
+      margin: 24px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h3 { 
+      font-size: 12px; 
+      font-weight: 600;
+      color: #334155; 
+      margin: 14px 0 8px;
+    }
+    
+    /* Executive Summary */
+    .exec-summary {
+      background: #0f172a;
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
       margin-bottom: 24px;
     }
-    .risk-score {
-      width: 120px;
-      height: 120px;
+    .exec-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .exec-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .pillar-count {
+      background: #d97706;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .risk-display {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+    .risk-score-circle {
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #fef3c7;
-      border: 4px solid #f59e0b;
+      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
     }
-    .risk-score-value { font-size: 32px; font-weight: bold; color: #92400e; }
-    .risk-score-label { font-size: 11px; color: #92400e; text-transform: uppercase; }
-    
-    .risk-cards {
+    .risk-score-value { 
+      font-size: 28px; 
+      font-weight: 800; 
+      color: #0f172a;
+      line-height: 1;
+    }
+    .risk-score-label { 
+      font-size: 8px; 
+      color: #0f172a;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .risk-categories {
       flex: 1;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
     }
-    .risk-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
+    .risk-cat {
+      padding: 8px 10px;
       border-radius: 6px;
-      font-size: 13px;
+      text-align: center;
     }
+    .risk-cat-label { font-size: 9px; opacity: 0.9; margin-bottom: 2px; }
+    .risk-cat-value { font-size: 11px; font-weight: 700; }
+    .risk-safe { background: rgba(34, 197, 94, 0.2); }
+    .risk-caution { background: rgba(251, 191, 36, 0.2); }
+    .risk-danger { background: rgba(239, 68, 68, 0.2); }
     
-    .status-badge {
-      padding: 4px 12px;
+    .pillar-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+    .pillar-item {
+      background: rgba(255,255,255,0.1);
+      padding: 6px 4px;
       border-radius: 4px;
-      font-size: 11px;
+      text-align: center;
+      font-size: 8px;
+    }
+    .pillar-icon { font-size: 14px; margin-bottom: 2px; }
+    .pillar-name { opacity: 0.8; }
+    .pillar-status { 
+      margin-top: 2px;
       font-weight: 600;
+      font-size: 7px;
       text-transform: uppercase;
     }
+    .pillar-ok { color: #4ade80; }
+    .pillar-warn { color: #fbbf24; }
+    .pillar-alert { color: #f87171; }
     
-    .findings-section {
-      margin-bottom: 24px;
-    }
+    /* Finding Cards */
     .finding-card {
-      background: #f8fafc;
+      background: white;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 16px;
       margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .finding-header {
       display: flex;
@@ -344,255 +537,869 @@ export function generatePDFContent(data: ReportData): string {
       align-items: center;
       margin-bottom: 12px;
     }
-    .finding-title { font-weight: 600; color: #0f172a; }
-    
-    .finding-items {
-      display: grid;
-      gap: 6px;
+    .finding-title { 
+      font-weight: 700; 
+      color: #0f172a;
+      font-size: 12px;
     }
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .finding-items { display: grid; gap: 4px; }
     .finding-item {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
-      padding: 4px 0;
-      border-bottom: 1px solid #e2e8f0;
+      font-size: 10px;
+      padding: 5px 0;
+      border-bottom: 1px solid #f1f5f9;
     }
+    .finding-item:last-child { border-bottom: none; }
+    .finding-label { color: #64748b; }
+    .finding-value { font-weight: 600; color: #0f172a; }
     
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .stat-box {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+    .stat-label {
+      font-size: 8px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+    .stat-good .stat-value { color: #16a34a; }
+    .stat-warn .stat-value { color: #d97706; }
+    .stat-bad .stat-value { color: #dc2626; }
+    
+    /* Recommendations */
     .recommendations {
-      background: #fef9e7;
-      border: 1px solid #d4a574;
-      border-radius: 6px;
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
       padding: 12px;
       margin-top: 12px;
     }
     .recommendations h4 {
-      font-size: 11px;
-      color: #d4a574;
+      font-size: 9px;
+      color: #92400e;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    .recommendations ol {
+      margin-left: 14px;
+      color: #78350f;
     }
     .recommendations li {
-      font-size: 12px;
-      margin-bottom: 4px;
-      margin-left: 16px;
+      font-size: 10px;
+      margin-bottom: 3px;
     }
     
+    /* Data Source */
+    .data-source {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 6px;
+      font-size: 9px;
+    }
+    .data-source-title {
+      font-weight: 700;
+      color: #0369a1;
+      margin-bottom: 2px;
+    }
+    .data-source-text { color: #0c4a6e; }
+    
+    /* Alert Boxes */
+    .alert-box {
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 10px;
+    }
+    .alert-success {
+      background: #dcfce7;
+      border: 1px solid #4ade80;
+      color: #166534;
+    }
+    .alert-warning {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      color: #92400e;
+    }
+    .alert-danger {
+      background: #fee2e2;
+      border: 1px solid #f87171;
+      color: #991b1b;
+    }
+    .alert-info {
+      background: #dbeafe;
+      border: 1px solid #60a5fa;
+      color: #1e40af;
+    }
+    .alert-title {
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    
+    /* Map Section */
     .map-section {
-      margin: 24px 0;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
+      margin: 16px 0;
     }
     .map-header {
       background: #0f172a;
       color: white;
-      padding: 12px 16px;
-      font-size: 14px;
-      font-weight: 600;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
     }
     .map-container {
-      height: 250px;
-      background: #f1f5f9;
+      height: 200px;
+      background: #1e293b;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
     }
-    .map-placeholder {
-      text-align: center;
-      color: #64748b;
+    .map-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
-    .map-coordinates {
-      font-size: 12px;
+    .map-footer {
+      font-size: 9px;
       color: #64748b;
-      padding: 8px 16px;
+      padding: 8px 14px;
       background: #f8fafc;
       border-top: 1px solid #e2e8f0;
     }
     
-    .well-section {
-      margin: 24px 0;
-    }
-    .well-summary {
+    /* Property Views (Street View + Satellite) */
+    .views-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 16px;
+      margin: 16px 0;
     }
-    .well-stat {
-      background: #ecfeff;
-      border: 1px solid #06b6d4;
-      border-radius: 8px;
-      padding: 12px;
-      text-align: center;
+    .view-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
     }
-    .well-stat-value {
-      font-size: 24px;
-      font-weight: bold;
-      color: #0891b2;
-    }
-    .well-stat-label {
-      font-size: 11px;
-      color: #0e7490;
-      text-transform: uppercase;
-    }
-    .well-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-    }
-    .well-table th {
-      background: #0e7490;
+    .view-header {
+      background: #334155;
       color: white;
-      padding: 8px;
-      text-align: left;
+      padding: 8px 12px;
+      font-size: 10px;
       font-weight: 600;
     }
-    .well-table td {
-      padding: 6px 8px;
-      border-bottom: 1px solid #e2e8f0;
+    .view-image {
+      height: 150px;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 10px;
     }
-    .well-table tr:nth-child(even) {
-      background: #f8fafc;
+    .view-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9px;
+      margin: 10px 0;
+    }
+    .data-table th {
+      background: #0f172a;
+      color: white;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .data-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .data-table tr:nth-child(even) { background: #f8fafc; }
+    
+    /* Owner Section */
+    .owner-card {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 1px solid #93c5fd;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .owner-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .owner-section h4 {
+      font-size: 10px;
+      color: #1e40af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .owner-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .value-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #bfdbfe;
+      font-size: 10px;
+    }
+    .value-row:last-child { border-bottom: none; }
+    .value-label { color: #3b82f6; }
+    .value-amount { font-weight: 700; color: #0f172a; }
+    
+    /* Livability Section Styles */
+    .livability-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .livability-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .livability-icon {
+      font-size: 24px;
+      margin-right: 10px;
+    }
+    .livability-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .livability-subtitle {
+      font-size: 9px;
+      color: #64748b;
+    }
+    
+    /* Two Column Layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    /* Footer */
     .disclaimer {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 20px;
-      margin-top: 30px;
-      font-size: 11px;
+      padding: 16px;
+      margin-top: 24px;
+      font-size: 9px;
       color: #64748b;
     }
     .disclaimer h4 { 
-      font-size: 12px; 
+      font-size: 10px; 
       color: #334155; 
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      font-weight: 700;
     }
     
     .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid #e2e8f0;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 2px solid #0f172a;
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
+      align-items: center;
+      font-size: 9px;
       color: #64748b;
     }
-    
-    .data-source {
-      background: #f0f9ff;
-      border: 1px solid #0ea5e9;
-      border-radius: 6px;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 11px;
-    }
-    .data-source-title {
-      font-weight: 600;
-      color: #0369a1;
-      margin-bottom: 4px;
-    }
-    .data-source-text {
-      color: #0c4a6e;
+    .footer-brand {
+      font-weight: 700;
+      color: #0f172a;
     }
     
     @media print {
       body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-      .page { padding: 20px; }
+      .page { padding: 0; }
+      .no-print { display: none; }
     }
   </style>
 </head>
 <body>
+  <!-- PAGE 1: Cover & Executive Summary -->
   <div class="page">
     <div class="header">
       <div>
-        <div class="logo">Rio Grande Due Diligence</div>
-        <div class="logo-sub">Environmental Compliance Report</div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Comprehensive Property Intelligence Report</div>
       </div>
-      <div class="report-info">
-        <div class="report-id">Report ID: ${data.reportId}</div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
         <div class="report-date">Generated: ${data.generatedAt}</div>
-        <div class="report-date">Valid Until: ${data.validUntil}</div>
+        <div class="report-validity">Valid through ${data.validUntil}</div>
       </div>
     </div>
     
-    <h1>Rio Grande Due Diligence Report</h1>
-    
-    <div class="property-section">
+    <div class="property-card">
       <div class="property-address">${data.address}</div>
-      <div class="property-county">${data.county}, New Mexico</div>
+      <div class="property-county">${data.county || 'New Mexico'}, New Mexico</div>
       <div class="property-grid">
         <div class="property-item">
           <span class="property-label">Parcel ID (APN)</span>
-          <span class="property-value">${data.parcelId}</span>
+          <span class="property-value">${data.parcelId || 'Research Required'}</span>
         </div>
         <div class="property-item">
           <span class="property-label">Zoning</span>
-          <span class="property-value">${data.zoning}</span>
+          <span class="property-value">${data.zoning || 'Verify with County'}</span>
         </div>
         <div class="property-item">
           <span class="property-label">Parcel Size</span>
-          <span class="property-value">${data.acreage}</span>
+          <span class="property-value">${data.acreage || 'Research Required'}</span>
         </div>
         <div class="property-item">
           <span class="property-label">Jurisdiction</span>
-          <span class="property-value">${data.jurisdiction}</span>
+          <span class="property-value">${data.jurisdiction || data.county || 'County'}</span>
+        </div>
+        <div class="property-item">
+          <span class="property-label">Coordinates</span>
+          <span class="property-value">${data.lat?.toFixed(5) || '--'}°N, ${data.lng ? Math.abs(data.lng).toFixed(5) : '--'}°W</span>
+        </div>
+        <div class="property-item">
+          <span class="property-label">Legal Description</span>
+          <span class="property-value">${data.legalDescription || 'See County Records'}</span>
         </div>
       </div>
     </div>
     
-    ${mapSection}
+    ${sections.executiveSummary}
     
-    <h2>Risk Summary</h2>
-    <div class="risk-summary">
-      <div class="risk-score">
-        <div class="risk-score-value">${data.riskScore}</div>
-        <div class="risk-score-label">Moderate Risk</div>
+    ${sections.ownerInfo}
+  </div>
+  
+  <!-- PAGE 2: Property Views & Location -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Property Views & Location Analysis</div>
       </div>
-      <div class="risk-cards">
-        <div class="risk-card" style="background: ${culturalConfig.bg}">
-          <span style="color: ${culturalConfig.text}">Cultural Resources</span>
-          <span class="status-badge" style="background: ${culturalConfig.text}; color: white;">${culturalConfig.label}</span>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.propertyViews}
+  </div>
+  
+  <!-- PAGE 3: Environmental Compliance -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Environmental Compliance Analysis</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.cultural}
+    
+    ${sections.habitat}
+  </div>
+  
+  <!-- PAGE 4: Water Resources -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Water Resources Analysis</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.water}
+    
+    ${sections.wells}
+  </div>
+  
+  <!-- PAGE 5: Hazards & Risk -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Natural Hazards & Environmental Risk</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.flood}
+    
+    ${sections.epa}
+  </div>
+  
+  <!-- PAGE 6: Infrastructure & Services -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Infrastructure & Emergency Services</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.infrastructure}
+    
+    ${sections.solar}
+  </div>
+  
+  <!-- PAGE 7: Livability - Air & Climate -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Livability Analysis — Air Quality & Climate</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.airQuality}
+    
+    ${sections.pollen}
+    
+    ${sections.weather}
+  </div>
+  
+  <!-- PAGE 8: Livability - Connectivity -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Livability Analysis — Connectivity & Quiet</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    ${sections.cellCoverage}
+    
+    ${sections.broadband}
+    
+    <div class="two-col">
+      ${sections.darkSky}
+      ${sections.noise}
+    </div>
+  </div>
+  
+  <!-- PAGE 9: Disclaimer & Methodology -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="logo">Rio Grande <span class="logo-accent">Due Diligence</span></div>
+        <div class="logo-sub">Data Sources & Methodology</div>
+      </div>
+      <div class="report-meta">
+        <div class="report-id">${data.reportId || 'RGDD-REPORT'}</div>
+      </div>
+    </div>
+    
+    <h2>Data Sources & Methodology</h2>
+    
+    <div class="finding-card">
+      <div class="finding-title" style="margin-bottom: 12px;">This report aggregates data from ${pillarCount} authoritative sources:</div>
+      
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Data Source</th>
+            <th>Update Frequency</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Parcel Data</td><td>Regrid National Parcel Database, County Assessors</td><td>Monthly</td></tr>
+          <tr><td>Cultural Resources</td><td>BIA AIAN, Census TIGER, NPS NRHP</td><td>Annual</td></tr>
+          <tr><td>Water Rights</td><td>NM Office of State Engineer POD Database</td><td>Real-time</td></tr>
+          <tr><td>Flood Zones</td><td>FEMA National Flood Hazard Layer</td><td>As updated</td></tr>
+          <tr><td>Environmental</td><td>EPA Envirofacts, FRS, CERCLIS</td><td>Quarterly</td></tr>
+          <tr><td>Solar Potential</td><td>Google Solar API, Project Sunroof</td><td>Annual</td></tr>
+          <tr><td>Infrastructure</td><td>Google Places API, Distance Matrix</td><td>Real-time</td></tr>
+          <tr><td>Air Quality</td><td>Google Air Quality API, EPA AirNow</td><td>Hourly</td></tr>
+          <tr><td>Pollen</td><td>Google Pollen API</td><td>Daily (seasonal)</td></tr>
+          <tr><td>Climate</td><td>NOAA Climate Normals, NWS</td><td>30-year normals</td></tr>
+          <tr><td>Cell Coverage</td><td>FCC Mobile Deployment Data</td><td>Annual</td></tr>
+          <tr><td>Broadband</td><td>FCC National Broadband Map</td><td>Bi-annual</td></tr>
+          <tr><td>Dark Sky</td><td>Light Pollution Atlas, IDA</td><td>Annual</td></tr>
+          <tr><td>Noise</td><td>DOT National Transportation Atlas</td><td>Annual</td></tr>
+          <tr><td>Imagery</td><td>Google Maps, Street View API</td><td>Varies</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="disclaimer">
+      <h4>Legal Disclaimer & Limitations</h4>
+      <p>This Property Intelligence Report is generated from publicly available data sources and is intended for preliminary assessment purposes only. It does not constitute a Phase I Environmental Site Assessment (ESA) under ASTM E1527-21, nor does it replace formal consultation with regulatory agencies.</p>
+      <p style="margin-top: 8px;">Data accuracy is dependent on source agency updates and may not reflect recent changes. All findings should be independently verified with the relevant regulatory agencies before making purchase decisions.</p>
+      <p style="margin-top: 8px;"><strong>Rio Grande Due Diligence LLC</strong> makes no warranties regarding the completeness or accuracy of this report. This report is valid for 90 days from generation date.</p>
+    </div>
+    
+    <div class="footer">
+      <div>
+        <span class="footer-brand">Rio Grande Due Diligence</span> | Report Version 3.0
+      </div>
+      <div>
+        License: Single-use, non-transferable | © ${new Date().getFullYear()} RGDD LLC
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+}
+
+// === SECTION GENERATORS ===
+
+function generateExecutiveSummary(data: ReportData): string {
+  const score = data.riskScore || 68;
+  const riskLevel = score >= 80 ? 'LOW RISK' : score >= 60 ? 'MODERATE RISK' : 'HIGH RISK';
+  const riskColor = score >= 80 ? '#16a34a' : score >= 60 ? '#d97706' : '#dc2626';
+  
+  const pillars = [
+    { icon: '📍', name: 'Parcel', status: data.parcelId ? 'ok' : 'warn' },
+    { icon: '🏛️', name: 'Cultural', status: data.culturalStatus === 'safe' ? 'ok' : data.culturalStatus === 'danger' ? 'alert' : 'warn' },
+    { icon: '💧', name: 'Water', status: data.waterStatus === 'safe' ? 'ok' : data.waterStatus === 'danger' ? 'alert' : 'warn' },
+    { icon: '🌊', name: 'Flood', status: data.floodData?.sfha ? 'alert' : 'ok' },
+    { icon: '☣️', name: 'EPA', status: data.epaData?.summary.overallRisk === 'low' ? 'ok' : 'warn' },
+    { icon: '🦅', name: 'Habitat', status: data.habitatStatus === 'safe' ? 'ok' : 'warn' },
+    { icon: '☀️', name: 'Solar', status: data.solarData ? 'ok' : 'warn' },
+    { icon: '🚒', name: 'Services', status: data.infrastructureData ? 'ok' : 'warn' },
+    { icon: '🌬️', name: 'Air', status: data.airQualityData?.aqi && data.airQualityData.aqi <= 50 ? 'ok' : data.airQualityData?.aqi && data.airQualityData.aqi > 100 ? 'alert' : 'warn' },
+    { icon: '🌸', name: 'Pollen', status: data.pollenData ? 'ok' : 'warn' },
+    { icon: '🌡️', name: 'Climate', status: data.weatherData ? 'ok' : 'warn' },
+    { icon: '📱', name: 'Cell', status: data.cellCoverageData?.overallCoverage === 'excellent' || data.cellCoverageData?.overallCoverage === 'good' ? 'ok' : 'warn' },
+    { icon: '📶', name: 'Internet', status: data.broadbandData?.fiberAvailable ? 'ok' : 'warn' },
+    { icon: '🌙', name: 'Dark Sky', status: data.darkSkyData?.bortleClass && data.darkSkyData.bortleClass <= 4 ? 'ok' : 'warn' },
+    { icon: '🔇', name: 'Quiet', status: data.noiseLevelData?.overallLevel === 'quiet' ? 'ok' : 'warn' },
+    { icon: '🏔️', name: 'Terrain', status: data.elevationData ? 'ok' : 'warn' },
+    { icon: '🛰️', name: 'Imagery', status: data.satelliteMapUrl ? 'ok' : 'warn' },
+  ];
+  
+  return `
+    <div class="exec-summary">
+      <div class="exec-header">
+        <div class="exec-title">Executive Summary</div>
+        <div class="pillar-count">17 Data Pillars Analyzed</div>
+      </div>
+      
+      <div class="risk-display">
+        <div class="risk-score-circle">
+          <div class="risk-score-value">${score}</div>
+          <div class="risk-score-label">${riskLevel}</div>
         </div>
-        <div class="risk-card" style="background: ${waterConfig.bg}">
-          <span style="color: ${waterConfig.text}">Water Rights</span>
-          <span class="status-badge" style="background: ${waterConfig.text}; color: white;">${waterConfig.label}</span>
+        <div class="risk-categories">
+          <div class="risk-cat ${data.culturalStatus === 'safe' ? 'risk-safe' : data.culturalStatus === 'danger' ? 'risk-danger' : 'risk-caution'}">
+            <div class="risk-cat-label">Cultural</div>
+            <div class="risk-cat-value">${data.culturalStatus === 'safe' ? 'Clear' : data.culturalStatus === 'danger' ? 'High Risk' : 'Caution'}</div>
+          </div>
+          <div class="risk-cat ${data.waterStatus === 'safe' ? 'risk-safe' : data.waterStatus === 'danger' ? 'risk-danger' : 'risk-caution'}">
+            <div class="risk-cat-label">Water</div>
+            <div class="risk-cat-value">${data.waterStatus === 'safe' ? 'Clear' : data.waterStatus === 'danger' ? 'High Risk' : 'Caution'}</div>
+          </div>
+          <div class="risk-cat ${data.habitatStatus === 'safe' ? 'risk-safe' : 'risk-caution'}">
+            <div class="risk-cat-label">Habitat</div>
+            <div class="risk-cat-value">${data.habitatStatus === 'safe' ? 'Clear' : 'Caution'}</div>
+          </div>
+          <div class="risk-cat ${!data.floodData?.sfha ? 'risk-safe' : 'risk-danger'}">
+            <div class="risk-cat-label">Flood</div>
+            <div class="risk-cat-value">${data.floodData?.floodZone || 'N/A'}</div>
+          </div>
+          <div class="risk-cat ${data.epaData?.summary.overallRisk === 'low' ? 'risk-safe' : 'risk-caution'}">
+            <div class="risk-cat-label">EPA</div>
+            <div class="risk-cat-value">${data.epaData?.summary.overallRisk === 'low' ? 'Clear' : 'Review'}</div>
+          </div>
+          <div class="risk-cat risk-safe">
+            <div class="risk-cat-label">Livability</div>
+            <div class="risk-cat-value">Analyzed</div>
+          </div>
         </div>
-        <div class="risk-card" style="background: ${habitatConfig.bg}">
-          <span style="color: ${habitatConfig.text}">Critical Habitat</span>
-          <span class="status-badge" style="background: ${habitatConfig.text}; color: white;">${habitatConfig.label}</span>
+      </div>
+      
+      <div class="pillar-grid">
+        ${pillars.map(p => `
+          <div class="pillar-item">
+            <div class="pillar-icon">${p.icon}</div>
+            <div class="pillar-name">${p.name}</div>
+            <div class="pillar-status pillar-${p.status}">${p.status === 'ok' ? '✓' : p.status === 'alert' ? '⚠' : '○'}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function generateOwnerSection(data: ReportData): string {
+  if (!data.owner && !data.propertyValues?.totalValue) {
+    return '';
+  }
+  
+  return `
+    <div class="owner-card">
+      <div class="owner-grid">
+        <div class="owner-section">
+          <h4>Property Owner</h4>
+          <div class="owner-value">${data.owner || 'Not Available'}</div>
+          ${data.ownerAddress ? `<div style="font-size: 10px; color: #64748b; margin-top: 4px;">${data.ownerAddress}</div>` : ''}
+        </div>
+        <div class="owner-section">
+          <h4>Assessed Values (${data.propertyValues?.taxYear || data.taxYear || 'Current'})</h4>
+          <div class="value-row">
+            <span class="value-label">Land Value</span>
+            <span class="value-amount">${data.propertyValues?.landValue || data.landValue ? formatCurrency(data.propertyValues?.landValue || data.landValue || 0) : 'N/A'}</span>
+          </div>
+          <div class="value-row">
+            <span class="value-label">Improvements</span>
+            <span class="value-amount">${data.propertyValues?.improvementValue || data.improvementValue ? formatCurrency(data.propertyValues?.improvementValue || data.improvementValue || 0) : 'N/A'}</span>
+          </div>
+          <div class="value-row">
+            <span class="value-label">Total Value</span>
+            <span class="value-amount" style="font-size: 12px;">${data.propertyValues?.totalValue || data.totalValue ? formatCurrency(data.propertyValues?.totalValue || data.totalValue || 0) : 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function generatePropertyViewsSection(data: ReportData): string {
+  return `
+    <h2>Property Views</h2>
+    
+    <div class="views-grid">
+      <div class="view-card">
+        <div class="view-header">📷 Street View</div>
+        <div class="view-image">
+          ${data.streetViewUrl ? 
+            `<img src="${data.streetViewUrl}" alt="Street View" />` : 
+            `<div style="text-align: center; padding: 20px;">
+              <div style="font-size: 32px; margin-bottom: 8px;">🚗</div>
+              <div style="font-weight: 600;">Street View</div>
+              <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;">
+                ${data.streetViewData?.available === false ? 'Not Available for This Location' : 'Available in Web Report'}
+              </div>
+            </div>`
+          }
+        </div>
+      </div>
+      <div class="view-card">
+        <div class="view-header">🛰️ Satellite View</div>
+        <div class="view-image">
+          ${data.satelliteMapUrl ? 
+            `<img src="${data.satelliteMapUrl}" alt="Satellite View" />` : 
+            `<div style="text-align: center; padding: 20px;">
+              <div style="font-size: 32px; margin-bottom: 8px;">🛰️</div>
+              <div style="font-weight: 600;">Satellite Imagery</div>
+              <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;">Available in Web Report</div>
+            </div>`
+          }
         </div>
       </div>
     </div>
     
-    ${culturalSection}
+    <div class="map-section">
+      <div class="map-header">📍 Location Overview</div>
+      <div class="map-container">
+        ${data.satelliteMapUrl ? 
+          `<img src="${data.satelliteMapUrl}" alt="Property Location" />` :
+          `<div style="text-align: center; color: #94a3b8;">
+            <div style="font-size: 48px; margin-bottom: 8px;">🗺️</div>
+            <div style="font-weight: 600;">Aerial View with Parcel Boundary</div>
+          </div>`
+        }
+      </div>
+      <div class="map-footer">
+        <strong>Coordinates:</strong> ${data.lat?.toFixed(6) || '--'}°N, ${data.lng ? Math.abs(data.lng).toFixed(6) : '--'}°W
+        ${data.parcelGeometry ? ' | <span style="color: #d97706; font-weight: 600;">◼ Parcel Boundary Shown</span>' : ''}
+      </div>
+    </div>
     
-    <h2>Water Rights & Restrictions</h2>
+    ${data.elevationData ? `
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-box">
+          <div class="stat-value">${formatNumber(data.elevationData.elevation)}'</div>
+          <div class="stat-label">Elevation (ft)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${data.elevationData.slope?.toFixed(1) || '--'}°</div>
+          <div class="stat-label">Slope</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${data.elevationData.aspect || 'N/A'}</div>
+          <div class="stat-label">Aspect</div>
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+function generateCulturalSection(
+  culturalData: CulturalResourcesData | undefined, 
+  statusConfig: { bg: string; text: string; label: string }
+): string {
+  const cd = culturalData;
+  
+  const findings: { label: string; value: string; highlight?: boolean }[] = [];
+  
+  if (cd) {
+    if (cd.onTribalLand && cd.nearestTribalLand) {
+      findings.push({ label: 'Tribal Land Status', value: `ON ${cd.nearestTribalLand.name.toUpperCase()}`, highlight: true });
+    } else if (cd.nearestTribalLand) {
+      findings.push({ label: 'Tribal Land Status', value: 'OFF tribal boundaries' });
+      findings.push({ label: 'Nearest Tribal Land', value: `${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(1)} mi)` });
+    } else {
+      findings.push({ label: 'Tribal Land Status', value: 'OFF tribal boundaries' });
+    }
+    
+    if (cd.tribalLandsWithin5Miles.length > 0) {
+      findings.push({ label: 'Tribal Lands Within 5 Miles', value: `${cd.tribalLandsWithin5Miles.length} identified` });
+    }
+    
+    findings.push({ label: 'NRHP Properties Within 1 Mile', value: cd.nrhpPropertiesWithin1Mile.length > 0 ? `${cd.nrhpPropertiesWithin1Mile.length} listed` : 'None found' });
+    findings.push({ label: 'Historic District', value: cd.inHistoricDistrict ? `Within ${cd.historicDistrictName || 'district'}` : 'Not within historic district' });
+    findings.push({ label: 'Section 106 Review Required', value: cd.section106Required ? 'Yes' : 'No' });
+    findings.push({ label: 'Tribal Consultation Required', value: cd.tribalConsultationRequired ? 'Yes' : 'No' });
+  }
+  
+  const recommendations = cd?.recommendedActions || [
+    "Commission Phase I Archaeological Survey before ground disturbance",
+    "Submit NMCRIS Project ID application to SHPO",
+    "Initiate tribal consultation per NHPA Section 106"
+  ];
+  
+  return `
+    <h2>Cultural Resources Assessment</h2>
     <div class="finding-card">
       <div class="finding-header">
-        <span class="finding-title">NM Office of State Engineer - Verification Required</span>
-        <span class="status-badge" style="background: ${waterConfig.text}; color: white;">${waterConfig.label}</span>
+        <div>
+          <span class="finding-title">Tribal Lands & Historic Properties Analysis</span>
+        </div>
+        <span class="status-badge" style="background: ${statusConfig.text}; color: white;">${statusConfig.label}</span>
       </div>
+      
+      <div class="finding-items">
+        ${findings.map(f => `
+          <div class="finding-item">
+            <span class="finding-label">${f.label}</span>
+            <span class="finding-value" ${f.highlight ? 'style="color: #991b1b; font-weight: 700;"' : ''}>${f.value}</span>
+          </div>
+        `).join('')}
+      </div>
+      
+      ${cd?.tribalLandsWithin5Miles && cd.tribalLandsWithin5Miles.length > 0 ? `
+        <div class="alert-box alert-warning" style="margin-top: 12px;">
+          <div class="alert-title">Tribal Lands Within 5 Miles</div>
+          ${cd.tribalLandsWithin5Miles.slice(0, 3).map(t => `• ${t.name} (${t.distance.toFixed(2)} mi)`).join('<br/>')}
+          ${cd.tribalLandsWithin5Miles.length > 3 ? `<br/><em>...and ${cd.tribalLandsWithin5Miles.length - 3} more</em>` : ''}
+        </div>
+      ` : ''}
+      
+      <div class="recommendations">
+        <h4>Recommended Actions</h4>
+        <ol>
+          ${recommendations.map(r => `<li>${r}</li>`).join('')}
+        </ol>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${cd?.source || 'Census TIGER AIAN, BIA National LAR, NPS NRHP'}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateWaterSection(data: ReportData, statusConfig: { bg: string; text: string; label: string }): string {
+  return `
+    <h2>Water Rights & Resources</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">NM Office of State Engineer Analysis</span>
+        <span class="status-badge" style="background: ${statusConfig.text}; color: white;">${statusConfig.label}</span>
+      </div>
+      
       <div class="finding-items">
         <div class="finding-item">
-          <span>State Administration</span>
-          <span>NM Office of State Engineer</span>
+          <span class="finding-label">State Administration</span>
+          <span class="finding-value">NM Office of State Engineer</span>
         </div>
         <div class="finding-item">
-          <span>Municipal Water</span>
-          <span>Verify with local utility</span>
+          <span class="finding-label">Municipal Water</span>
+          <span class="finding-value">Verify with local utility</span>
         </div>
         <div class="finding-item">
-          <span>Domestic Well</span>
-          <span>May require OSE permit</span>
+          <span class="finding-label">Domestic Well</span>
+          <span class="finding-value">May require OSE permit</span>
         </div>
         <div class="finding-item">
-          <span>Water Rights on Parcel</span>
-          <span>Research required</span>
+          <span class="finding-label">Water Rights on Parcel</span>
+          <span class="finding-value">Research required</span>
         </div>
       </div>
+      
       <div class="recommendations">
         <h4>Recommended Actions</h4>
         <ol>
@@ -602,97 +1409,10 @@ export function generatePDFContent(data: ReportData): string {
           <li>For rural properties, budget for well drilling or water hauling if no municipal service</li>
         </ol>
       </div>
-      <p style="font-size: 10px; color: #666; margin-top: 8px;">Note: Water rights and utility availability must be verified directly with NM OSE and local providers. This report provides general guidance only.</p>
-    </div>
-    
-    ${wellSection}
-    
-    <h2>Critical Habitat & ESA Compliance</h2>
-    <div class="finding-card">
-      <div class="finding-header">
-        <span class="finding-title">ESA Compliance - Verification Recommended</span>
-        <span class="status-badge" style="background: ${habitatConfig.text}; color: white;">${habitatConfig.label}</span>
-      </div>
-      <div class="finding-items">
-        <div class="finding-item">
-          <span>Critical Habitat</span>
-          <span>IPaC query recommended</span>
-        </div>
-        <div class="finding-item">
-          <span>ESA Listed Species</span>
-          <span>Location-dependent</span>
-        </div>
-        <div class="finding-item">
-          <span>Migratory Bird Treaty Act</span>
-          <span>Applies statewide</span>
-        </div>
-        <div class="finding-item">
-          <span>Wetland/Waters of US</span>
-          <span>Site inspection needed</span>
-        </div>
-      </div>
-      <div class="recommendations">
-        <h4>Recommended Actions</h4>
-        <ol>
-          <li>Run USFWS IPaC query at ecos.fws.gov/ipac for official species list</li>
-          <li>Pre-construction bird survey if clearing during nesting season (Apr-Jul)</li>
-          <li>If near water features, conduct wetland delineation</li>
-          <li>Implement standard SWPPP for construction stormwater management</li>
-        </ol>
-      </div>
-      <p style="font-size: 10px; color: #666; margin-top: 8px;">Note: Site-specific ESA analysis requires official USFWS IPaC query. This report provides general guidance only.</p>
-    </div>
-    
-    ${floodSection}
-    
-    ${epaSection}
-    
-    ${solarSection}
-    
-    ${infrastructureSection}
-    
-    <div class="disclaimer">
-      <h4>Legal Disclaimer & Limitations</h4>
-      <p>This Environmental Due Diligence Report is generated from publicly available data sources and is intended for preliminary assessment purposes only. It does not constitute a Phase I Environmental Site Assessment (ESA) under ASTM E1527-21, nor does it replace formal consultation with regulatory agencies. Data accuracy is dependent on source agency updates.</p>
-      <p style="margin-top: 8px;">Rio Grande Due Diligence LLC makes no warranties regarding the completeness or accuracy of this report. This report is valid for 90 days from generation date.</p>
-    </div>
-    
-    <div class="footer">
-      <span>Report Version 2.2 | Rio Grande Due Diligence Platform</span>
-      <span>License: Single-use, non-transferable</span>
-    </div>
-  </div>
-</body>
-</html>
-`;
-}
-
-function generateMapSection(lat: number, lng: number, wells: WellData[], parcelGeometry?: number[][][] | null, satelliteMapUrl?: string): string {
-  const hasParcelBoundary = parcelGeometry && parcelGeometry.length > 0 && parcelGeometry[0].length > 0;
-  
-  return `
-    <div class="map-section">
-      <div class="map-header">
-        <span>📍 Property Location & Aerial View</span>
-      </div>
-      <div class="map-container" style="background: #1a1a2e;">
-        ${satelliteMapUrl ? `
-          <img src="${satelliteMapUrl}" alt="Satellite view of property" style="width: 100%; height: auto; display: block; border-radius: 4px;" />
-        ` : `
-          <div class="map-placeholder">
-            <div style="font-size: 48px; margin-bottom: 8px;">🛰️</div>
-            <div style="font-weight: 600; color: #334155;">Satellite Imagery</div>
-            <div style="font-size: 11px;">Aerial view with parcel boundary</div>
-          </div>
-        `}
-      </div>
-      <div class="map-coordinates">
-        <strong>Coordinates:</strong> ${lat.toFixed(6)}°N, ${Math.abs(lng).toFixed(6)}°W
-        ${hasParcelBoundary ? ' | <span style="color: #d4a54a; font-weight: 600;">◼ Parcel Boundary Shown</span>' : ' | <span style="color: #94a3b8;">Approximate location marker</span>'}
-        ${wells.length > 0 ? ` | <strong>Nearby PODs:</strong> ${wells.length} within search radius` : ''}
-      </div>
-      <div style="font-size: 10px; color: #64748b; margin-top: 4px;">
-        Imagery: Google Maps | ${hasParcelBoundary ? 'Parcel boundary from County Assessor GIS' : 'Parcel boundary not available for this county'}
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">NM Office of the State Engineer (ose.state.nm.us)</div>
       </div>
     </div>
   `;
@@ -703,376 +1423,175 @@ function generateWellSection(wellData: { wells: WellData[]; summary: WellDataSum
   
   if (wells.length === 0) {
     return `
-      <div class="well-section">
-        <h2>OSE Points of Diversion Analysis</h2>
-        <div class="finding-card">
-          <div class="finding-header">
-            <span class="finding-title">NM Office of State Engineer - Well & POD Data</span>
-          </div>
-          <p style="font-size: 13px; color: #64748b;">No points of diversion or wells found within 1 mile of subject property.</p>
-          <div class="data-source">
-            <div class="data-source-title">Data Source</div>
-            <div class="data-source-text">NM Office of the State Engineer POD Database (mercator.env.nm.gov)</div>
-          </div>
+      <div class="finding-card">
+        <div class="finding-header">
+          <span class="finding-title">Points of Diversion (POD) Analysis</span>
+        </div>
+        <p style="font-size: 11px; color: #64748b;">No points of diversion or wells found within 1 mile of subject property.</p>
+        <div class="data-source">
+          <div class="data-source-title">Data Source</div>
+          <div class="data-source-text">NM Office of the State Engineer POD Database (mercator.env.nm.gov)</div>
         </div>
       </div>
     `;
   }
 
-  // Get top 10 nearest wells for the table
-  const nearestWells = wells.slice(0, 10);
-  
-  // Generate use type breakdown
+  const nearestWells = wells.slice(0, 8);
   const useTypes = Object.entries(summary.byUse)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+    .slice(0, 4)
     .map(([use, count]) => `${use}: ${count}`)
     .join(' | ');
 
   return `
-    <div class="well-section">
-      <h2>OSE Points of Diversion Analysis</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">Points of Diversion (POD) Analysis</span>
+      </div>
       
-      <div class="well-summary">
-        <div class="well-stat">
-          <div class="well-stat-value">${summary.totalWells}</div>
-          <div class="well-stat-label">Total PODs (1 mi)</div>
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-box">
+          <div class="stat-value">${summary.totalWells}</div>
+          <div class="stat-label">Total PODs (1 mi)</div>
         </div>
-        <div class="well-stat">
-          <div class="well-stat-value">${summary.withinHalfMile}</div>
-          <div class="well-stat-label">Within ½ Mile</div>
+        <div class="stat-box">
+          <div class="stat-value">${summary.withinHalfMile}</div>
+          <div class="stat-label">Within ½ Mile</div>
         </div>
-        <div class="well-stat">
-          <div class="well-stat-value">${Object.keys(summary.byType).length}</div>
-          <div class="well-stat-label">POD Types</div>
+        <div class="stat-box">
+          <div class="stat-value">${Object.keys(summary.byType).length}</div>
+          <div class="stat-label">POD Types</div>
         </div>
       </div>
       
-      <div class="finding-card">
-        <div class="finding-header">
-          <span class="finding-title">Nearest Points of Diversion</span>
-        </div>
-        
-        <table class="well-table">
-          <thead>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>POD ID</th>
+            <th>Type</th>
+            <th>Use</th>
+            <th>Status</th>
+            <th>Distance</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${nearestWells.map(well => `
             <tr>
-              <th>POD ID</th>
-              <th>Type</th>
-              <th>Use</th>
-              <th>Status</th>
-              <th>Distance</th>
+              <td>${well.podId || 'N/A'}</td>
+              <td>${well.podType || 'Unknown'}</td>
+              <td>${well.waterUse || 'Unknown'}</td>
+              <td>${well.status || 'Unknown'}</td>
+              <td>${well.distance} mi</td>
             </tr>
-          </thead>
-          <tbody>
-            ${nearestWells.map(well => `
-              <tr>
-                <td>${well.podId || 'N/A'}</td>
-                <td>${well.podType || 'Unknown'}</td>
-                <td>${well.waterUse || 'Unknown'}</td>
-                <td>${well.status || 'Unknown'}</td>
-                <td>${well.distance} mi</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div style="margin-top: 12px; font-size: 11px; color: #64748b;">
-          <strong>Use Type Breakdown:</strong> ${useTypes}
-        </div>
-        
-        <div class="data-source">
-          <div class="data-source-title">Data Source</div>
-          <div class="data-source-text">NM Office of the State Engineer Points of Diversion Database (mercator.env.nm.gov) - Real-time query of surface diversions and well permits.</div>
-        </div>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <div style="margin-top: 8px; font-size: 9px; color: #64748b;">
+        <strong>Use Types:</strong> ${useTypes}
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">NM Office of the State Engineer POD Database - Real-time query</div>
       </div>
     </div>
   `;
 }
 
-function generateCulturalSection(
-  culturalData: CulturalResourcesData | undefined, 
-  statusConfig: { bg: string; text: string; label: string }
-): string {
-  const cd = culturalData;
-  
-  // Build findings based on real data
-  const findings: string[] = [];
-  
-  if (cd) {
-    // Tribal land status - explicit ON or OFF
-    if (cd.onTribalLand && cd.nearestTribalLand) {
-      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #991b1b; font-weight: 600;">ON ${cd.nearestTribalLand.name.toUpperCase()}</span></div>`);
-    } else if (cd.nearestTribalLand) {
-      // Explicitly OFF tribal land, show nearest
-      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #166534; font-weight: 600;">OFF tribal boundaries</span></div>`);
-      findings.push(`<div class="finding-item"><span>Nearest Tribal Land</span><span>${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(1)} mi)</span></div>`);
-    } else {
-      // No tribal lands detected
-      findings.push(`<div class="finding-item"><span>Tribal Land Status</span><span style="color: #166534;">OFF tribal boundaries</span></div>`);
-      findings.push(`<div class="finding-item"><span>Nearest Tribal Land</span><span>None identified within 10 miles</span></div>`);
-    }
-    
-    // Tribal lands count
-    if (cd.tribalLandsWithin5Miles.length > 0) {
-      findings.push(`<div class="finding-item"><span>Tribal Lands Within 5 Miles</span><span>${cd.tribalLandsWithin5Miles.length} identified</span></div>`);
-    }
-    
-    // NRHP Properties
-    if (cd.nrhpPropertiesWithin1Mile.length > 0) {
-      findings.push(`<div class="finding-item"><span>NRHP Properties Within 1 Mile</span><span>${cd.nrhpPropertiesWithin1Mile.length} listed</span></div>`);
-      if (cd.nearestNRHPProperty) {
-        findings.push(`<div class="finding-item"><span>Nearest NRHP Property</span><span>${cd.nearestNRHPProperty.name} (${cd.nearestNRHPProperty.distance.toFixed(2)} mi)</span></div>`);
-      }
-    } else {
-      findings.push(`<div class="finding-item"><span>NRHP Properties Within 1 Mile</span><span>None found</span></div>`);
-    }
-    
-    // Historic District
-    if (cd.inHistoricDistrict) {
-      findings.push(`<div class="finding-item"><span>Historic District</span><span style="color: #991b1b; font-weight: 600;">Within ${cd.historicDistrictName || 'district'}</span></div>`);
-    } else {
-      findings.push(`<div class="finding-item"><span>Historic District</span><span>Not within historic district</span></div>`);
-    }
-    
-    // Section 106
-    findings.push(`<div class="finding-item"><span>Section 106 Review Required</span><span>${cd.section106Required ? 'Yes' : 'No'}</span></div>`);
-    
-    // Tribal consultation
-    findings.push(`<div class="finding-item"><span>Tribal Consultation Required</span><span>${cd.tribalConsultationRequired ? 'Yes' : 'No'}</span></div>`);
-  } else {
-    findings.push(`<div class="finding-item"><span>Data Status</span><span>Loading or unavailable</span></div>`);
-  }
-  
-  // Build recommendations
-  const recommendations = cd?.recommendedActions || [
-    "Commission Phase I Archaeological Survey before ground disturbance",
-    "Submit NMCRIS Project ID application to SHPO",
-    "Initiate tribal consultation per NHPA Section 106"
-  ];
-  
-  const source = cd?.source || "BIA AIAN Land Areas, National Register of Historic Places";
-  
+function generateHabitatSection(statusConfig: { bg: string; text: string; label: string }): string {
   return `
-    <h2>Cultural Resources Assessment</h2>
+    <h2>Critical Habitat & ESA Compliance</h2>
     <div class="finding-card">
       <div class="finding-header">
-        <span class="finding-title">Tribal Lands & Historic Properties Analysis</span>
+        <span class="finding-title">Endangered Species Act Analysis</span>
         <span class="status-badge" style="background: ${statusConfig.text}; color: white;">${statusConfig.label}</span>
       </div>
+      
       <div class="finding-items">
-        ${findings.join('')}
+        <div class="finding-item">
+          <span class="finding-label">Critical Habitat</span>
+          <span class="finding-value">IPaC query recommended</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">ESA Listed Species</span>
+          <span class="finding-value">Location-dependent</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Migratory Bird Treaty Act</span>
+          <span class="finding-value">Applies statewide</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Wetland/Waters of US</span>
+          <span class="finding-value">Site inspection needed</span>
+        </div>
       </div>
-      ${cd?.tribalLandsWithin5Miles && cd.tribalLandsWithin5Miles.length > 0 ? `
-        <div style="margin-top: 12px; padding: 10px; background: #fef9e7; border: 1px solid #d4a574; border-radius: 6px;">
-          <h4 style="font-size: 11px; color: #92400e; text-transform: uppercase; margin-bottom: 8px;">Tribal Lands Within 5 Miles</h4>
-          <div style="font-size: 12px; color: #78350f;">
-            ${cd.tribalLandsWithin5Miles.slice(0, 5).map(t => `• ${t.name} (${t.distance.toFixed(2)} mi)`).join('<br/>')}
-            ${cd.tribalLandsWithin5Miles.length > 5 ? `<br/><em>...and ${cd.tribalLandsWithin5Miles.length - 5} more</em>` : ''}
-          </div>
-        </div>
-      ` : ''}
-      ${cd?.nrhpPropertiesWithin1Mile && cd.nrhpPropertiesWithin1Mile.length > 0 ? `
-        <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px;">
-          <h4 style="font-size: 11px; color: #0369a1; text-transform: uppercase; margin-bottom: 8px;">NRHP Listed Properties Nearby</h4>
-          <div style="font-size: 12px; color: #0c4a6e;">
-            ${cd.nrhpPropertiesWithin1Mile.slice(0, 5).map(p => `• ${p.name} (${p.distance.toFixed(2)} mi) - ${p.resourceType}`).join('<br/>')}
-          </div>
-        </div>
-      ` : ''}
+      
       <div class="recommendations">
         <h4>Recommended Actions</h4>
         <ol>
-          ${recommendations.map(r => `<li>${r}</li>`).join('')}
+          <li>Run USFWS IPaC query at ecos.fws.gov/ipac for official species list</li>
+          <li>Pre-construction bird survey if clearing during nesting season (Apr-Jul)</li>
+          <li>If near water features, conduct wetland delineation</li>
+          <li>Implement standard SWPPP for construction stormwater management</li>
         </ol>
       </div>
-      <div class="data-source">
-        <div class="data-source-title">Data Source</div>
-        <div class="data-source-text">${source}</div>
-      </div>
-    </div>
-  `;
-}
-
-function generateSolarSection(solarData: SolarData): string {
-  const potentialColors: Record<string, { bg: string; text: string }> = {
-    excellent: { bg: "#fef3c7", text: "#92400e" },
-    good: { bg: "#dcfce7", text: "#166534" },
-    fair: { bg: "#fef9c3", text: "#854d0e" },
-    poor: { bg: "#fee2e2", text: "#991b1b" },
-  };
-  
-  const config = potentialColors[solarData.solarPotential] || potentialColors.good;
-  
-  return `
-    <h2>Solar Development Potential</h2>
-    <div class="finding-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fef9e7 100%);">
-      <div class="finding-header">
-        <span class="finding-title">☀️ Google Solar API Analysis</span>
-        <span class="status-badge" style="background: ${config.text}; color: white; text-transform: uppercase;">${solarData.solarPotential}</span>
-      </div>
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 16px 0;">
-        <div style="text-align: center; padding: 16px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
-          <div style="font-size: 28px; font-weight: bold; color: #d97706;">${solarData.sunlightHoursPerYear.toLocaleString()}</div>
-          <div style="font-size: 11px; color: #92400e; text-transform: uppercase;">Hours/Year Sunlight</div>
-        </div>
-        <div style="text-align: center; padding: 16px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
-          <div style="font-size: 28px; font-weight: bold; color: #059669;">$${solarData.annualSavingsEstimate.toLocaleString()}</div>
-          <div style="font-size: 11px; color: #047857; text-transform: uppercase;">Est. Annual Savings</div>
-        </div>
-      </div>
-      <div class="finding-items">
-        <div class="finding-item">
-          <span>Solar Potential Rating</span>
-          <span style="font-weight: 600; color: ${config.text};">${solarData.solarPotential.toUpperCase()}</span>
-        </div>
-        <div class="finding-item">
-          <span>Recommended System Capacity</span>
-          <span>${solarData.recommendedCapacityKw} kW</span>
-        </div>
-        <div class="finding-item">
-          <span>Usable Roof Area</span>
-          <span>${solarData.roofAreaSqFt.toLocaleString()} sq ft</span>
-        </div>
-        <div class="finding-item">
-          <span>Annual Sunlight Hours</span>
-          <span>${solarData.sunlightHoursPerYear.toLocaleString()} hours</span>
-        </div>
-      </div>
-      <div class="data-source">
-        <div class="data-source-title">Data Source</div>
-        <div class="data-source-text">${solarData.source}</div>
-      </div>
-    </div>
-  `;
-}
-
-function generateInfrastructureSection(infraData: InfrastructureData): string {
-  const getIsoClassDescription = (isoClass?: number): string => {
-    if (!isoClass || isoClass === 0) return "Not rated";
-    if (isoClass <= 3) return `Class ${isoClass} (Excellent)`;
-    if (isoClass <= 5) return `Class ${isoClass} (Good)`;
-    if (isoClass <= 7) return `Class ${isoClass} (Fair)`;
-    return `Class ${isoClass} (Limited)`;
-  };
-
-  return `
-    <h2>Infrastructure & Emergency Services</h2>
-    <div class="finding-card" style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);">
-      <div class="finding-header">
-        <span class="finding-title">🏛️ Google Places API Analysis</span>
-        <span class="status-badge" style="background: #1d4ed8; color: white;">INFRASTRUCTURE</span>
-      </div>
-      
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0;">
-        <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #3b82f6;">
-          <div style="font-size: 11px; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nearest Fire Station</div>
-          <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${infraData.nearestFireStation.name}</div>
-          <div style="font-size: 20px; font-weight: bold; color: #dc2626;">${infraData.nearestFireStation.driveTime ? `${infraData.nearestFireStation.driveTime} min` : `${infraData.nearestFireStation.distance} mi`}</div>
-          ${infraData.nearestFireStation.driveDistance ? `<div style="font-size: 11px; color: #64748b;">${infraData.nearestFireStation.driveDistance} mi by road</div>` : ''}
-          <div style="font-size: 11px; color: #64748b;">ISO Rating: ${getIsoClassDescription(infraData.nearestFireStation.isoClass)}</div>
-        </div>
-        <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #3b82f6;">
-          <div style="font-size: 11px; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Nearest Hospital</div>
-          <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${infraData.nearestHospital.name}</div>
-          <div style="font-size: 20px; font-weight: bold; color: #059669;">${infraData.nearestHospital.driveTime ? `${infraData.nearestHospital.driveTime} min` : `${infraData.nearestHospital.distance} mi`}</div>
-          ${infraData.nearestHospital.driveDistance ? `<div style="font-size: 11px; color: #64748b;">${infraData.nearestHospital.driveDistance} mi by road</div>` : ''}
-        </div>
-      </div>
-      
-      <div class="finding-items">
-        <div class="finding-item">
-          <span>🚒 Nearest Fire Station</span>
-          <span>${infraData.nearestFireStation.driveTime ? `${infraData.nearestFireStation.driveTime} min (${infraData.nearestFireStation.driveDistance} mi)` : `${infraData.nearestFireStation.distance} mi`} - ${infraData.nearestFireStation.name}</span>
-        </div>
-        <div class="finding-item">
-          <span>🚓 Nearest Police Station</span>
-          <span>${infraData.nearestPolice.driveTime ? `${infraData.nearestPolice.driveTime} min (${infraData.nearestPolice.driveDistance} mi)` : `${infraData.nearestPolice.distance} mi`} - ${infraData.nearestPolice.name}</span>
-        </div>
-        <div class="finding-item">
-          <span>🏥 Nearest Hospital</span>
-          <span>${infraData.nearestHospital.driveTime ? `${infraData.nearestHospital.driveTime} min (${infraData.nearestHospital.driveDistance} mi)` : `${infraData.nearestHospital.distance} mi`} - ${infraData.nearestHospital.name}</span>
-        </div>
-        <div class="finding-item">
-          <span>🏫 Nearest School</span>
-          <span>${infraData.nearestSchool.driveTime ? `${infraData.nearestSchool.driveTime} min (${infraData.nearestSchool.driveDistance} mi)` : `${infraData.nearestSchool.distance} mi`} - ${infraData.nearestSchool.name}</span>
-        </div>
-        <div class="finding-item">
-          <span>🛒 Nearest Grocery</span>
-          <span>${infraData.nearestGrocery.driveTime ? `${infraData.nearestGrocery.driveTime} min (${infraData.nearestGrocery.driveDistance} mi)` : `${infraData.nearestGrocery.distance} mi`} - ${infraData.nearestGrocery.name}</span>
-        </div>
-      </div>
-      
-      <div style="margin-top: 12px; padding: 10px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
-        <h4 style="font-size: 11px; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">Insurance Note</h4>
-        <div style="font-size: 12px; color: #78350f;">
-          Fire insurance rates are typically influenced by proximity to fire stations and ISO fire protection class ratings. 
-          Properties within 5 road miles of a fire station generally receive better rates.
-        </div>
-      </div>
       
       <div class="data-source">
         <div class="data-source-title">Data Source</div>
-        <div class="data-source-text">${infraData.source}</div>
+        <div class="data-source-text">USFWS Information for Planning and Consultation (IPaC)</div>
       </div>
     </div>
   `;
 }
 
 function generateFloodSection(floodData: FloodData): string {
-  const riskColors: Record<string, { bg: string; text: string; label: string }> = {
-    high: { bg: "#fee2e2", text: "#991b1b", label: "HIGH RISK" },
-    moderate: { bg: "#fef3c7", text: "#92400e", label: "MODERATE" },
-    low: { bg: "#dbeafe", text: "#1e40af", label: "LOW RISK" },
-    minimal: { bg: "#dcfce7", text: "#166534", label: "MINIMAL" },
+  const riskColors: Record<string, { bg: string; text: string }> = {
+    high: { bg: "#fee2e2", text: "#991b1b" },
+    moderate: { bg: "#fef3c7", text: "#92400e" },
+    low: { bg: "#dbeafe", text: "#1e40af" },
+    minimal: { bg: "#dcfce7", text: "#166534" },
   };
   
   const config = riskColors[floodData.riskLevel] || riskColors.minimal;
   
   return `
     <h2>FEMA Flood Zone Analysis</h2>
-    <div class="finding-card" style="background: linear-gradient(135deg, ${config.bg} 0%, #ffffff 100%);">
+    <div class="finding-card">
       <div class="finding-header">
-        <span class="finding-title">🌊 National Flood Hazard Layer</span>
-        <span class="status-badge" style="background: ${config.text}; color: white;">${config.label}</span>
+        <span class="finding-title">National Flood Hazard Layer</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${floodData.riskLevel.toUpperCase()}</span>
       </div>
       
-      <div style="text-align: center; padding: 20px; margin: 16px 0; background: white; border-radius: 8px; border: 2px solid ${config.text};">
-        <div style="font-size: 36px; font-weight: bold; color: ${config.text};">${floodData.floodZone}</div>
-        <div style="font-size: 14px; color: #64748b; margin-top: 4px;">${floodData.floodZoneDescription}</div>
+      <div style="text-align: center; padding: 16px; margin: 12px 0; background: ${config.bg}; border-radius: 8px; border: 2px solid ${config.text};">
+        <div style="font-size: 32px; font-weight: 800; color: ${config.text};">${floodData.floodZone}</div>
+        <div style="font-size: 11px; color: ${config.text}; margin-top: 4px;">${floodData.floodZoneDescription}</div>
       </div>
       
       <div class="finding-items">
         <div class="finding-item">
-          <span>Flood Zone Designation</span>
-          <span style="font-weight: 600; color: ${config.text};">${floodData.floodZone}</span>
+          <span class="finding-label">Flood Zone</span>
+          <span class="finding-value" style="color: ${config.text}; font-weight: 700;">${floodData.floodZone}</span>
         </div>
         <div class="finding-item">
-          <span>Zone Description</span>
-          <span>${floodData.floodZoneDescription}</span>
+          <span class="finding-label">Special Flood Hazard Area (SFHA)</span>
+          <span class="finding-value" style="color: ${floodData.sfha ? '#991b1b' : '#166534'}; font-weight: 700;">${floodData.sfha ? 'YES - Insurance Required' : 'NO'}</span>
         </div>
         <div class="finding-item">
-          <span>Special Flood Hazard Area (SFHA)</span>
-          <span style="font-weight: 600; color: ${floodData.sfha ? '#991b1b' : '#166534'};">${floodData.sfha ? 'YES - Flood Insurance Required' : 'NO'}</span>
-        </div>
-        <div class="finding-item">
-          <span>Flood Risk Level</span>
-          <span>${floodData.riskLevel.charAt(0).toUpperCase() + floodData.riskLevel.slice(1)}</span>
+          <span class="finding-label">Risk Level</span>
+          <span class="finding-value">${floodData.riskLevel.charAt(0).toUpperCase() + floodData.riskLevel.slice(1)}</span>
         </div>
       </div>
       
       ${floodData.sfha ? `
-        <div style="margin-top: 12px; padding: 12px; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px;">
-          <h4 style="font-size: 11px; color: #991b1b; text-transform: uppercase; margin-bottom: 4px;">⚠️ Flood Insurance Requirement</h4>
-          <div style="font-size: 12px; color: #7f1d1d;">
-            This property is located within a Special Flood Hazard Area (SFHA). Federally-backed mortgages require flood insurance for properties in SFHA zones. Consider obtaining an Elevation Certificate for accurate premium calculations.
-          </div>
+        <div class="alert-box alert-danger">
+          <div class="alert-title">⚠️ Flood Insurance Required</div>
+          This property is in a Special Flood Hazard Area. Federally-backed mortgages require flood insurance.
         </div>
       ` : `
-        <div style="margin-top: 12px; padding: 12px; background: #dcfce7; border: 1px solid #4ade80; border-radius: 6px;">
-          <h4 style="font-size: 11px; color: #166534; text-transform: uppercase; margin-bottom: 4px;">✓ Low Flood Risk</h4>
-          <div style="font-size: 12px; color: #14532d;">
-            This property is outside the Special Flood Hazard Area. Flood insurance is not required but may still be recommended depending on local drainage conditions.
-          </div>
+        <div class="alert-box alert-success">
+          <div class="alert-title">✓ Low Flood Risk</div>
+          Property is outside the Special Flood Hazard Area. Flood insurance not required but may be recommended.
         </div>
       `}
       
@@ -1085,84 +1604,60 @@ function generateFloodSection(floodData: FloodData): string {
 }
 
 function generateEPASection(epaData: EPAData): string {
-  const riskColors: Record<string, { bg: string; text: string; label: string }> = {
-    high: { bg: "#fee2e2", text: "#991b1b", label: "HIGH CONCERN" },
-    moderate: { bg: "#fef3c7", text: "#92400e", label: "MODERATE" },
-    low: { bg: "#dcfce7", text: "#166534", label: "LOW CONCERN" },
-  };
-  
-  const config = riskColors[epaData.summary.overallRisk] || riskColors.low;
   const { summary } = epaData;
-  
-  const totalSites = summary.superfundWithin1Mile + summary.triWithin1Mile + summary.brownfieldWithin1Mile + summary.rcraWithin1Mile;
+  const config = summary.overallRisk === 'low' 
+    ? { bg: "#dcfce7", text: "#166534" }
+    : summary.overallRisk === 'high'
+    ? { bg: "#fee2e2", text: "#991b1b" }
+    : { bg: "#fef3c7", text: "#92400e" };
   
   return `
     <h2>EPA Environmental Hazards</h2>
-    <div class="finding-card" style="background: linear-gradient(135deg, #fef9c3 0%, #fffbeb 100%);">
+    <div class="finding-card">
       <div class="finding-header">
-        <span class="finding-title">☣️ EPA Envirofacts Analysis</span>
-        <span class="status-badge" style="background: ${config.text}; color: white;">${config.label}</span>
+        <span class="finding-title">EPA Envirofacts Analysis</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${summary.overallRisk.toUpperCase()} CONCERN</span>
       </div>
       
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0;">
-        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
-          <div style="font-size: 24px; font-weight: bold; color: ${summary.superfundWithin1Mile > 0 ? '#991b1b' : '#166534'};">${summary.superfundWithin1Mile}</div>
-          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Superfund (1mi)</div>
+      <div class="stats-grid">
+        <div class="stat-box ${summary.superfundWithin1Mile > 0 ? 'stat-bad' : 'stat-good'}">
+          <div class="stat-value">${summary.superfundWithin1Mile}</div>
+          <div class="stat-label">Superfund (1mi)</div>
         </div>
-        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
-          <div style="font-size: 24px; font-weight: bold; color: ${summary.triWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.triWithin1Mile}</div>
-          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">TRI Sites (1mi)</div>
+        <div class="stat-box ${summary.triWithin1Mile > 0 ? 'stat-warn' : 'stat-good'}">
+          <div class="stat-value">${summary.triWithin1Mile}</div>
+          <div class="stat-label">TRI Sites</div>
         </div>
-        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
-          <div style="font-size: 24px; font-weight: bold; color: ${summary.brownfieldWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.brownfieldWithin1Mile}</div>
-          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Brownfield (1mi)</div>
+        <div class="stat-box ${summary.brownfieldWithin1Mile > 0 ? 'stat-warn' : 'stat-good'}">
+          <div class="stat-value">${summary.brownfieldWithin1Mile}</div>
+          <div class="stat-label">Brownfield</div>
         </div>
-        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #fcd34d;">
-          <div style="font-size: 24px; font-weight: bold; color: ${summary.rcraWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.rcraWithin1Mile}</div>
-          <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">RCRA (1mi)</div>
+        <div class="stat-box ${summary.rcraWithin1Mile > 0 ? 'stat-warn' : 'stat-good'}">
+          <div class="stat-value">${summary.rcraWithin1Mile}</div>
+          <div class="stat-label">RCRA</div>
         </div>
       </div>
       
       <div class="finding-items">
         <div class="finding-item">
-          <span>Superfund/NPL Sites (1 mile)</span>
-          <span style="font-weight: 600; color: ${summary.superfundWithin1Mile > 0 ? '#991b1b' : '#166534'};">${summary.superfundWithin1Mile} found</span>
+          <span class="finding-label">Superfund/NPL Sites (5 mi)</span>
+          <span class="finding-value">${summary.superfundWithin5Miles} found</span>
         </div>
         <div class="finding-item">
-          <span>Superfund/NPL Sites (5 miles)</span>
-          <span>${summary.superfundWithin5Miles} found</span>
-        </div>
-        <div class="finding-item">
-          <span>Toxic Release Inventory (TRI) Sites</span>
-          <span style="font-weight: 600; color: ${summary.triWithin1Mile > 0 ? '#92400e' : '#166534'};">${summary.triWithin1Mile} within 1 mile</span>
-        </div>
-        <div class="finding-item">
-          <span>Brownfield Sites</span>
-          <span>${summary.brownfieldWithin1Mile} within 1 mile</span>
-        </div>
-        <div class="finding-item">
-          <span>RCRA Hazardous Waste Facilities</span>
-          <span>${summary.rcraWithin1Mile} within 1 mile</span>
-        </div>
-        <div class="finding-item">
-          <span>Overall Environmental Risk</span>
-          <span style="font-weight: 600; color: ${config.text};">${summary.overallRisk.toUpperCase()}</span>
+          <span class="finding-label">Overall Environmental Risk</span>
+          <span class="finding-value" style="color: ${config.text}; font-weight: 700;">${summary.overallRisk.toUpperCase()}</span>
         </div>
       </div>
       
-      ${totalSites > 0 ? `
-        <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
-          <h4 style="font-size: 11px; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">⚠️ Due Diligence Recommendation</h4>
-          <div style="font-size: 12px; color: #78350f;">
-            Environmental sites have been identified in proximity to this property. A Phase I Environmental Site Assessment (ASTM E1527-21) is recommended to evaluate potential environmental liabilities before acquisition.
-          </div>
+      ${summary.superfundWithin1Mile + summary.triWithin1Mile + summary.brownfieldWithin1Mile > 0 ? `
+        <div class="alert-box alert-warning">
+          <div class="alert-title">Due Diligence Recommendation</div>
+          Environmental sites identified nearby. Phase I ESA (ASTM E1527-21) recommended before acquisition.
         </div>
       ` : `
-        <div style="margin-top: 12px; padding: 12px; background: #dcfce7; border: 1px solid #4ade80; border-radius: 6px;">
-          <h4 style="font-size: 11px; color: #166534; text-transform: uppercase; margin-bottom: 4px;">✓ Clean Environmental Record</h4>
-          <div style="font-size: 12px; color: #14532d;">
-            No EPA-regulated environmental sites were identified within 1 mile of this property. This is a positive indicator for environmental due diligence.
-          </div>
+        <div class="alert-box alert-success">
+          <div class="alert-title">✓ Clean Environmental Record</div>
+          No EPA-regulated sites within 1 mile. Positive indicator for environmental due diligence.
         </div>
       `}
       
@@ -1174,21 +1669,493 @@ function generateEPASection(epaData: EPAData): string {
   `;
 }
 
+function generateSolarSection(solarData: SolarData): string {
+  const potentialColors: Record<string, { bg: string; text: string }> = {
+    excellent: { bg: "#fef3c7", text: "#d97706" },
+    good: { bg: "#dcfce7", text: "#16a34a" },
+    fair: { bg: "#fef9c3", text: "#ca8a04" },
+    poor: { bg: "#fee2e2", text: "#dc2626" },
+  };
+  
+  const config = potentialColors[solarData.solarPotential] || potentialColors.good;
+  
+  return `
+    <h2>Solar Development Potential</h2>
+    <div class="finding-card" style="background: linear-gradient(135deg, ${config.bg}40 0%, white 100%);">
+      <div class="finding-header">
+        <span class="finding-title">☀️ Google Solar API Analysis</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${solarData.solarPotential.toUpperCase()}</span>
+      </div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="stat-box" style="background: white;">
+          <div class="stat-value" style="color: ${config.text};">${formatNumber(solarData.sunlightHoursPerYear)}</div>
+          <div class="stat-label">Hours/Year Sunlight</div>
+        </div>
+        <div class="stat-box" style="background: white;">
+          <div class="stat-value" style="color: #16a34a;">${formatCurrency(solarData.annualSavingsEstimate)}</div>
+          <div class="stat-label">Est. Annual Savings</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">Recommended System</span>
+          <span class="finding-value">${solarData.recommendedCapacityKw} kW</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Usable Area</span>
+          <span class="finding-value">${formatNumber(solarData.roofAreaSqFt)} sq ft</span>
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${solarData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateInfrastructureSection(infraData: InfrastructureData): string {
+  return `
+    <h2>Infrastructure & Emergency Services</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🏛️ Service Distance Analysis</span>
+      </div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="stat-box ${infraData.nearestFireStation.distance > 10 ? 'stat-warn' : 'stat-good'}">
+          <div class="stat-value">${infraData.nearestFireStation.driveTime ? `${infraData.nearestFireStation.driveTime} min` : `${infraData.nearestFireStation.distance.toFixed(1)} mi`}</div>
+          <div class="stat-label">🚒 Fire Station</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${infraData.nearestHospital.driveTime ? `${infraData.nearestHospital.driveTime} min` : `${infraData.nearestHospital.distance.toFixed(1)} mi`}</div>
+          <div class="stat-label">🏥 Hospital</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">🚒 Fire Station</span>
+          <span class="finding-value">${infraData.nearestFireStation.name}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">🚓 Police</span>
+          <span class="finding-value">${infraData.nearestPolice.name} (${infraData.nearestPolice.driveTime ? `${infraData.nearestPolice.driveTime} min` : `${infraData.nearestPolice.distance.toFixed(1)} mi`})</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">🏥 Hospital</span>
+          <span class="finding-value">${infraData.nearestHospital.name}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">🏫 School</span>
+          <span class="finding-value">${infraData.nearestSchool.name} (${infraData.nearestSchool.driveTime ? `${infraData.nearestSchool.driveTime} min` : `${infraData.nearestSchool.distance.toFixed(1)} mi`})</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">🛒 Grocery</span>
+          <span class="finding-value">${infraData.nearestGrocery.name} (${infraData.nearestGrocery.driveTime ? `${infraData.nearestGrocery.driveTime} min` : `${infraData.nearestGrocery.distance.toFixed(1)} mi`})</span>
+        </div>
+      </div>
+      
+      <div class="alert-box alert-info">
+        <div class="alert-title">Insurance Note</div>
+        Fire insurance rates influenced by proximity to fire stations. Properties within 5 road miles typically receive better rates.
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${infraData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+// === NEW LIVABILITY SECTIONS ===
+
+function generateAirQualitySection(airData: AirQualityData): string {
+  const aqiColor = airData.aqi <= 50 ? '#16a34a' : airData.aqi <= 100 ? '#ca8a04' : airData.aqi <= 150 ? '#ea580c' : '#dc2626';
+  const aqiLabel = airData.aqi <= 50 ? 'Good' : airData.aqi <= 100 ? 'Moderate' : airData.aqi <= 150 ? 'Unhealthy (Sensitive)' : 'Unhealthy';
+  
+  return `
+    <h2>Air Quality Analysis</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🌬️ Current Air Quality Index</span>
+        <span class="status-badge" style="background: ${aqiColor}; color: white;">${aqiLabel.toUpperCase()}</span>
+      </div>
+      
+      <div style="text-align: center; padding: 16px; margin: 12px 0; background: linear-gradient(135deg, ${aqiColor}20 0%, white 100%); border-radius: 8px;">
+        <div style="font-size: 48px; font-weight: 800; color: ${aqiColor};">${airData.aqi}</div>
+        <div style="font-size: 12px; color: ${aqiColor}; font-weight: 600;">Air Quality Index</div>
+      </div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-box">
+          <div class="stat-value">${airData.pm25.toFixed(1)}</div>
+          <div class="stat-label">PM2.5 (μg/m³)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${airData.ozone?.toFixed(1) || 'N/A'}</div>
+          <div class="stat-label">Ozone (ppb)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${airData.dominantPollutant}</div>
+          <div class="stat-label">Main Pollutant</div>
+        </div>
+      </div>
+      
+      ${airData.healthRecommendations ? `
+        <div class="alert-box alert-info">
+          <div class="alert-title">Health Guidance</div>
+          ${airData.healthRecommendations}
+        </div>
+      ` : ''}
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${airData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generatePollenSection(pollenData: PollenData): string {
+  const levelColor = (level: string) => {
+    switch(level.toLowerCase()) {
+      case 'low': case 'none': return '#16a34a';
+      case 'moderate': case 'medium': return '#ca8a04';
+      case 'high': return '#ea580c';
+      case 'very high': return '#dc2626';
+      default: return '#64748b';
+    }
+  };
+  
+  return `
+    <h2>Pollen & Allergen Forecast</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🌸 Seasonal Pollen Analysis</span>
+        <span class="status-badge" style="background: ${levelColor(pollenData.overallLevel)}; color: white;">${pollenData.overallLevel.toUpperCase()}</span>
+      </div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-box">
+          <div class="stat-value" style="color: ${levelColor(pollenData.treePollen.level)};">${pollenData.treePollen.index}</div>
+          <div class="stat-label">🌳 Tree Pollen</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" style="color: ${levelColor(pollenData.grassPollen.level)};">${pollenData.grassPollen.index}</div>
+          <div class="stat-label">🌾 Grass Pollen</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" style="color: ${levelColor(pollenData.weedPollen.level)};">${pollenData.weedPollen.index}</div>
+          <div class="stat-label">🌿 Weed Pollen</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">Current Season</span>
+          <span class="finding-value">${pollenData.season}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Overall Level</span>
+          <span class="finding-value" style="color: ${levelColor(pollenData.overallLevel)};">${pollenData.overallLevel}</span>
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${pollenData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateWeatherSection(weatherData: WeatherData): string {
+  return `
+    <h2>Climate & Weather Profile</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🌡️ Regional Climate Data</span>
+        <span class="status-badge" style="background: #0369a1; color: white;">${weatherData.climate.toUpperCase()}</span>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value">${weatherData.avgHighSummer}°F</div>
+          <div class="stat-label">Summer High</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${weatherData.avgLowWinter}°F</div>
+          <div class="stat-label">Winter Low</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${weatherData.sunnyDaysPerYear}</div>
+          <div class="stat-label">Sunny Days/Yr</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${weatherData.annualPrecipitation}"</div>
+          <div class="stat-label">Annual Precip</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">Annual Snowfall</span>
+          <span class="finding-value">${weatherData.annualSnowfall}" average</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Growing Season</span>
+          <span class="finding-value">${weatherData.growingSeasonDays} days</span>
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${weatherData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateCellCoverageSection(cellData: CellCoverageData): string {
+  const coverageColor = {
+    excellent: '#16a34a',
+    good: '#22c55e',
+    fair: '#ca8a04',
+    poor: '#ea580c',
+    none: '#dc2626'
+  };
+  
+  return `
+    <h2>Cellular Coverage</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">📱 Mobile Network Analysis</span>
+        <span class="status-badge" style="background: ${coverageColor[cellData.overallCoverage]}; color: white;">${cellData.overallCoverage.toUpperCase()}</span>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">Overall Coverage</span>
+          <span class="finding-value" style="color: ${coverageColor[cellData.overallCoverage]};">${cellData.overallCoverage.charAt(0).toUpperCase() + cellData.overallCoverage.slice(1)}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Area Type</span>
+          <span class="finding-value">${cellData.rural ? 'Rural' : 'Urban/Suburban'}</span>
+        </div>
+      </div>
+      
+      ${cellData.carriers.length > 0 ? `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Carrier</th>
+              <th>Coverage</th>
+              <th>5G</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cellData.carriers.map(c => `
+              <tr>
+                <td>${c.name}</td>
+                <td>${c.coverage}</td>
+                <td>${c.has5G ? '✓' : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : ''}
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${cellData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateBroadbandSection(broadbandData: BroadbandData): string {
+  return `
+    <h2>Broadband & Internet</h2>
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">📶 Internet Service Analysis</span>
+        <span class="status-badge" style="background: ${broadbandData.fiberAvailable ? '#16a34a' : '#ca8a04'}; color: white;">${broadbandData.fiberAvailable ? 'FIBER AVAILABLE' : 'LIMITED'}</span>
+      </div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="stat-box stat-good">
+          <div class="stat-value">${broadbandData.maxDownload}</div>
+          <div class="stat-label">Max Download (Mbps)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${broadbandData.maxUpload}</div>
+          <div class="stat-label">Max Upload (Mbps)</div>
+        </div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">Technologies Available</span>
+          <span class="finding-value">${broadbandData.technologies.join(', ') || 'Limited'}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Fiber Optic</span>
+          <span class="finding-value" style="color: ${broadbandData.fiberAvailable ? '#16a34a' : '#dc2626'};">${broadbandData.fiberAvailable ? 'Available' : 'Not Available'}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Starlink Eligible</span>
+          <span class="finding-value">${broadbandData.starlinkEligible ? 'Yes' : 'Check starlink.com'}</span>
+        </div>
+      </div>
+      
+      ${broadbandData.providers.length > 0 ? `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Technology</th>
+              <th>Max Speed</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${broadbandData.providers.slice(0, 5).map(p => `
+              <tr>
+                <td>${p.name}</td>
+                <td>${p.technology}</td>
+                <td>${p.maxSpeed} Mbps</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : ''}
+      
+      <div class="data-source">
+        <div class="data-source-title">Data Source</div>
+        <div class="data-source-text">${broadbandData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateDarkSkySection(darkSkyData: DarkSkyData): string {
+  const bortleColor = darkSkyData.bortleClass <= 3 ? '#16a34a' : darkSkyData.bortleClass <= 5 ? '#22c55e' : darkSkyData.bortleClass <= 7 ? '#ca8a04' : '#dc2626';
+  
+  return `
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🌙 Dark Sky Quality</span>
+      </div>
+      
+      <div style="text-align: center; padding: 12px; margin: 8px 0; background: #0f172a; border-radius: 8px;">
+        <div style="font-size: 28px; font-weight: 800; color: ${bortleColor};">Class ${darkSkyData.bortleClass}</div>
+        <div style="font-size: 10px; color: #94a3b8;">${darkSkyData.bortleDescription}</div>
+      </div>
+      
+      <div class="finding-items">
+        <div class="finding-item">
+          <span class="finding-label">Milky Way Visible</span>
+          <span class="finding-value">${darkSkyData.milkyWayVisible ? '✓ Yes' : 'Limited'}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">Light Pollution</span>
+          <span class="finding-value">${darkSkyData.lightPollutionLevel}</span>
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-text">${darkSkyData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateNoiseSection(noiseLevelData: NoiseLevelData): string {
+  const noiseColor = noiseLevelData.overallLevel === 'quiet' ? '#16a34a' : noiseLevelData.overallLevel === 'moderate' ? '#ca8a04' : '#dc2626';
+  
+  return `
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🔇 Noise Environment</span>
+      </div>
+      
+      <div style="text-align: center; padding: 12px; margin: 8px 0; background: ${noiseColor}20; border-radius: 8px;">
+        <div style="font-size: 28px; font-weight: 800; color: ${noiseColor};">${noiseLevelData.estimatedDecibels} dB</div>
+        <div style="font-size: 10px; color: ${noiseColor}; text-transform: uppercase;">${noiseLevelData.overallLevel}</div>
+      </div>
+      
+      <div class="finding-items">
+        ${noiseLevelData.nearestHighway ? `
+          <div class="finding-item">
+            <span class="finding-label">Nearest Highway</span>
+            <span class="finding-value">${noiseLevelData.nearestHighway.name} (${noiseLevelData.nearestHighway.distance.toFixed(1)} mi)</span>
+          </div>
+        ` : ''}
+        ${noiseLevelData.nearestAirport ? `
+          <div class="finding-item">
+            <span class="finding-label">Nearest Airport</span>
+            <span class="finding-value">${noiseLevelData.nearestAirport.name} (${noiseLevelData.nearestAirport.distance.toFixed(1)} mi)</span>
+          </div>
+        ` : ''}
+        <div class="finding-item">
+          <span class="finding-label">Flight Path</span>
+          <span class="finding-value">${noiseLevelData.flightPath ? 'Yes' : 'No'}</span>
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-text">${noiseLevelData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateElevationSection(elevationData: ElevationData): string {
+  return `
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="finding-title">🏔️ Elevation & Terrain</span>
+      </div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-box">
+          <div class="stat-value">${formatNumber(elevationData.elevation)}'</div>
+          <div class="stat-label">Elevation (ft)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${elevationData.slope?.toFixed(1) || '--'}°</div>
+          <div class="stat-label">Slope</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${elevationData.aspect || 'N/A'}</div>
+          <div class="stat-label">Aspect</div>
+        </div>
+      </div>
+      
+      <div class="data-source">
+        <div class="data-source-text">${elevationData.source}</div>
+      </div>
+    </div>
+  `;
+}
+
 export function downloadPDF(data: ReportData): void {
   const htmlContent = generatePDFContent(data);
   
-  // Open a new window for printing
-  const printWindow = window.open("", "_blank", "width=800,height=600");
+  const printWindow = window.open("", "_blank", "width=900,height=700");
   
   if (printWindow) {
     printWindow.document.write(htmlContent);
     printWindow.document.close();
     
-    // Wait for content to load, then trigger print
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.print();
-      }, 250);
+      }, 500);
     };
   }
 }

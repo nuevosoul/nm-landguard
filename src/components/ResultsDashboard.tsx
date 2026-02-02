@@ -8,7 +8,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GISMap from "./GISMap";
-import { downloadPDF, type ReportData, type WellData, type WellDataSummary, type CulturalResourcesData as PDFCulturalData, type SolarData as PDFSolarData, type InfrastructureData as PDFInfraData, type FloodData as PDFFloodData, type EPAData as PDFEPAData } from "@/lib/pdfExport";
+import { 
+  downloadPDF, 
+  type ReportData, 
+  type WellData, 
+  type WellDataSummary, 
+  type CulturalResourcesData as PDFCulturalData, 
+  type SolarData as PDFSolarData, 
+  type InfrastructureData as PDFInfraData, 
+  type FloodData as PDFFloodData, 
+  type EPAData as PDFEPAData,
+  type AirQualityData as PDFAirQualityData,
+  type PollenData as PDFPollenData,
+  type WeatherData as PDFWeatherData,
+  type CellCoverageData as PDFCellCoverageData,
+  type BroadbandData as PDFBroadbandData,
+  type DarkSkyData as PDFDarkSkyData,
+  type NoiseLevelData as PDFNoiseLevelData,
+  type StreetViewData as PDFStreetViewData,
+  type ElevationData as PDFElevationData
+} from "@/lib/pdfExport";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
@@ -1626,11 +1645,33 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     culturalStatus,
                     waterStatus: "caution",
                     habitatStatus: "safe",
+                    // Owner & Property Values
+                    owner: propertyData?.owner,
+                    ownerAddress: propertyData?.ownerAddress,
+                    landValue: propertyData?.landValue,
+                    improvementValue: propertyData?.improvementValue,
+                    totalValue: propertyData?.totalValue,
+                    taxYear: propertyData?.taxYear,
+                    // Wells & Location
                     wellData: wellData || undefined,
                     lat: coordinates?.lat,
                     lng: coordinates?.lng,
                     parcelGeometry: propertyData?.parcelGeometry,
                     satelliteMapUrl,
+                    // Street View
+                    streetViewData: streetViewData ? {
+                      available: streetViewData.available,
+                      imageUrl: streetViewData.imageUrl,
+                      source: streetViewData.source,
+                    } : undefined,
+                    // Elevation
+                    elevationData: elevationData ? {
+                      elevation: elevationData.elevation,
+                      slope: elevationData.slope,
+                      aspect: elevationData.aspect,
+                      source: elevationData.source || 'Google Elevation API',
+                    } : undefined,
+                    // Core Environmental Data
                     culturalData: culturalData || undefined,
                     solarData: solarData ? {
                       sunlightHoursPerYear: solarData.sunlightHoursPerYear,
@@ -1658,6 +1699,67 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     epaData: epaData ? {
                       summary: epaData.summary,
                       source: epaData.source,
+                    } : undefined,
+                    // NEW: Livability Data
+                    airQualityData: airQualityData ? {
+                      aqi: airQualityData.aqi,
+                      category: airQualityData.category,
+                      dominantPollutant: airQualityData.dominantPollutant,
+                      pm25: airQualityData.pm25,
+                      pm10: airQualityData.pm10,
+                      ozone: airQualityData.ozone,
+                      healthRecommendations: airQualityData.healthRecommendations,
+                      source: airQualityData.source,
+                    } : undefined,
+                    pollenData: pollenData ? {
+                      grassPollen: pollenData.grassPollen,
+                      treePollen: pollenData.treePollen,
+                      weedPollen: pollenData.weedPollen,
+                      overallLevel: pollenData.overallLevel,
+                      season: pollenData.season,
+                      source: pollenData.source,
+                    } : undefined,
+                    weatherData: weatherData ? {
+                      avgHighSummer: weatherData.avgHighSummer,
+                      avgLowWinter: weatherData.avgLowWinter,
+                      annualPrecipitation: weatherData.annualPrecipitation,
+                      annualSnowfall: weatherData.annualSnowfall,
+                      sunnyDaysPerYear: weatherData.sunnyDaysPerYear,
+                      growingSeasonDays: weatherData.growingSeasonDays,
+                      climate: weatherData.climate,
+                      source: weatherData.source,
+                    } : undefined,
+                    cellCoverageData: cellCoverageData ? {
+                      overallCoverage: cellCoverageData.overallCoverage,
+                      carriers: cellCoverageData.carriers,
+                      rural: cellCoverageData.rural,
+                      source: cellCoverageData.source,
+                    } : undefined,
+                    broadbandData: broadbandData ? {
+                      maxDownload: broadbandData.maxDownload,
+                      maxUpload: broadbandData.maxUpload,
+                      technologies: broadbandData.technologies,
+                      providers: broadbandData.providers,
+                      fiberAvailable: broadbandData.fiberAvailable,
+                      starlinkEligible: broadbandData.starlinkEligible,
+                      source: broadbandData.source,
+                    } : undefined,
+                    darkSkyData: darkSkyData ? {
+                      bortleClass: darkSkyData.bortleClass,
+                      bortleDescription: darkSkyData.bortleDescription,
+                      sqm: darkSkyData.sqm,
+                      milkyWayVisible: darkSkyData.milkyWayVisible,
+                      lightPollutionLevel: darkSkyData.lightPollutionLevel,
+                      source: darkSkyData.source,
+                    } : undefined,
+                    noiseLevelData: noiseLevelData ? {
+                      overallLevel: noiseLevelData.overallLevel,
+                      estimatedDecibels: noiseLevelData.estimatedDecibels,
+                      nearestHighway: noiseLevelData.nearestHighway,
+                      nearestAirport: noiseLevelData.nearestAirport,
+                      nearestRailroad: noiseLevelData.nearestRailroad,
+                      flightPath: noiseLevelData.flightPath,
+                      source: noiseLevelData.source,
                     } : undefined,
                   };
                   downloadPDF(pdfData);
@@ -1977,42 +2079,58 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               />
               <ExportPackage 
                 onExportPDF={() => {
+                  // Determine cultural status from data
+                  const culturalStatus: "safe" | "caution" | "danger" = 
+                    culturalData?.riskLevel === "high" || culturalData?.onTribalLand || culturalData?.inHistoricDistrict 
+                      ? "danger" 
+                      : culturalData?.riskLevel === "moderate" || culturalData?.section106Required 
+                        ? "caution" 
+                        : "safe";
+                  
                   const pdfData: ReportData = {
                     address: reportData.address,
-                    parcelId: reportData.parcelId,
-                    legalDescription: reportData.legalDescription,
-                    acreage: reportData.acreage,
-                    zoning: reportData.zoning,
-                    owner: reportData.owner,
-                    ownerAddress: reportData.ownerAddress,
+                    reportId: reportData.reportId,
                     generatedAt: reportData.generatedAt,
                     validUntil: reportData.validUntil,
-                    dataSource: reportData.dataSource,
-                    landValue: reportData.landValue,
-                    improvementValue: reportData.improvementValue,
-                    totalValue: reportData.totalValue,
-                    taxYear: reportData.taxYear,
-                    coordinates,
+                    parcelId: reportData.parcelId,
+                    legalDescription: plssData?.legalDescription || reportData.legalDescription,
+                    acreage: reportData.acreage,
+                    zoning: reportData.zoning,
+                    jurisdiction: reportData.jurisdiction,
+                    county: reportData.county,
+                    riskScore: riskScore,
+                    culturalStatus,
+                    waterStatus: "caution",
+                    habitatStatus: "safe",
+                    // Owner & Property Values
+                    owner: propertyData?.owner,
+                    ownerAddress: propertyData?.ownerAddress,
+                    landValue: propertyData?.landValue,
+                    improvementValue: propertyData?.improvementValue,
+                    totalValue: propertyData?.totalValue,
+                    taxYear: propertyData?.taxYear,
+                    // Wells & Location
                     wellData: wellData || undefined,
-                    culturalData: culturalData ? {
-                      nearestTribalLand: culturalData.nearestTribalLand,
-                      tribalLandsWithin5Miles: culturalData.tribalLandsWithin5Miles,
-                      onTribalLand: culturalData.onTribalLand,
-                      tribalConsultationRequired: culturalData.tribalConsultationRequired,
-                      tribalConsultationReason: culturalData.tribalConsultationReason,
-                      nrhpPropertiesWithin1Mile: culturalData.nrhpPropertiesWithin1Mile,
-                      nearestNRHPProperty: culturalData.nearestNRHPProperty,
-                      inHistoricDistrict: culturalData.inHistoricDistrict,
-                      historicDistrictName: culturalData.historicDistrictName,
-                      riskLevel: culturalData.riskLevel,
-                      section106Required: culturalData.section106Required,
-                      recommendedActions: culturalData.recommendedActions,
-                      source: culturalData.source,
+                    lat: coordinates?.lat,
+                    lng: coordinates?.lng,
+                    parcelGeometry: propertyData?.parcelGeometry,
+                    // Street View
+                    streetViewData: streetViewData ? {
+                      available: streetViewData.available,
+                      imageUrl: streetViewData.imageUrl,
+                      source: streetViewData.source,
                     } : undefined,
+                    // Elevation
+                    elevationData: elevationData ? {
+                      elevation: elevationData.elevation,
+                      slope: elevationData.slope,
+                      aspect: elevationData.aspect,
+                      source: elevationData.source || 'Google Elevation API',
+                    } : undefined,
+                    // Core Environmental Data
+                    culturalData: culturalData || undefined,
                     solarData: solarData ? {
                       sunlightHoursPerYear: solarData.sunlightHoursPerYear,
-                      maxArrayPanelsCount: solarData.maxArrayPanelsCount,
-                      maxArrayAreaMeters2: solarData.maxArrayAreaMeters2,
                       solarPotential: solarData.solarPotential,
                       annualSavingsEstimate: solarData.annualSavingsEstimate,
                       roofAreaSqFt: solarData.roofAreaSqFt,
@@ -2037,6 +2155,67 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                     epaData: epaData ? {
                       summary: epaData.summary,
                       source: epaData.source,
+                    } : undefined,
+                    // Livability Data
+                    airQualityData: airQualityData ? {
+                      aqi: airQualityData.aqi,
+                      category: airQualityData.category,
+                      dominantPollutant: airQualityData.dominantPollutant,
+                      pm25: airQualityData.pm25,
+                      pm10: airQualityData.pm10,
+                      ozone: airQualityData.ozone,
+                      healthRecommendations: airQualityData.healthRecommendations,
+                      source: airQualityData.source,
+                    } : undefined,
+                    pollenData: pollenData ? {
+                      grassPollen: pollenData.grassPollen,
+                      treePollen: pollenData.treePollen,
+                      weedPollen: pollenData.weedPollen,
+                      overallLevel: pollenData.overallLevel,
+                      season: pollenData.season,
+                      source: pollenData.source,
+                    } : undefined,
+                    weatherData: weatherData ? {
+                      avgHighSummer: weatherData.avgHighSummer,
+                      avgLowWinter: weatherData.avgLowWinter,
+                      annualPrecipitation: weatherData.annualPrecipitation,
+                      annualSnowfall: weatherData.annualSnowfall,
+                      sunnyDaysPerYear: weatherData.sunnyDaysPerYear,
+                      growingSeasonDays: weatherData.growingSeasonDays,
+                      climate: weatherData.climate,
+                      source: weatherData.source,
+                    } : undefined,
+                    cellCoverageData: cellCoverageData ? {
+                      overallCoverage: cellCoverageData.overallCoverage,
+                      carriers: cellCoverageData.carriers,
+                      rural: cellCoverageData.rural,
+                      source: cellCoverageData.source,
+                    } : undefined,
+                    broadbandData: broadbandData ? {
+                      maxDownload: broadbandData.maxDownload,
+                      maxUpload: broadbandData.maxUpload,
+                      technologies: broadbandData.technologies,
+                      providers: broadbandData.providers,
+                      fiberAvailable: broadbandData.fiberAvailable,
+                      starlinkEligible: broadbandData.starlinkEligible,
+                      source: broadbandData.source,
+                    } : undefined,
+                    darkSkyData: darkSkyData ? {
+                      bortleClass: darkSkyData.bortleClass,
+                      bortleDescription: darkSkyData.bortleDescription,
+                      sqm: darkSkyData.sqm,
+                      milkyWayVisible: darkSkyData.milkyWayVisible,
+                      lightPollutionLevel: darkSkyData.lightPollutionLevel,
+                      source: darkSkyData.source,
+                    } : undefined,
+                    noiseLevelData: noiseLevelData ? {
+                      overallLevel: noiseLevelData.overallLevel,
+                      estimatedDecibels: noiseLevelData.estimatedDecibels,
+                      nearestHighway: noiseLevelData.nearestHighway,
+                      nearestAirport: noiseLevelData.nearestAirport,
+                      nearestRailroad: noiseLevelData.nearestRailroad,
+                      flightPath: noiseLevelData.flightPath,
+                      source: noiseLevelData.source,
                     } : undefined,
                   };
                   downloadPDF(pdfData);
