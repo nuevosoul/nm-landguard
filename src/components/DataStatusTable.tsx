@@ -104,6 +104,12 @@ const dataSources: DataSource[] = [
     updateFreq: "Seasonal",
     status: "live",
   },
+  {
+    agency: "Google Street View API",
+    dataLayer: "Road Access & Frontage Imagery",
+    updateFreq: "Varies",
+    status: "live",
+  },
 ];
 
 const DataStatusTable = () => {
@@ -120,7 +126,7 @@ const DataStatusTable = () => {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-display text-lg font-semibold text-foreground tracking-tight">
-              16-PILLAR DATA MATRIX
+              17-PILLAR DATA MATRIX
             </h2>
             <p className="text-[9px] text-muted-foreground mt-0.5 font-mono uppercase tracking-wider">
               Last sync: {new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC
@@ -128,7 +134,7 @@ const DataStatusTable = () => {
           </div>
           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-status-safe-bg border border-status-safe/30">
             <Circle className="w-1.5 h-1.5 fill-status-safe text-status-safe animate-pulse" />
-            <span className="text-[9px] font-mono font-bold text-status-safe">16/16 PILLARS ONLINE</span>
+            <span className="text-[9px] font-mono font-bold text-status-safe">17/17 PILLARS ONLINE</span>
           </div>
         </div>
 
@@ -182,7 +188,7 @@ const DataStatusTable = () => {
           <span className="text-border">|</span>
           <span className="font-mono">Uptime: <span className="text-status-safe font-bold">99.97%</span></span>
           <span className="text-border">|</span>
-          <span className="font-mono">Pillars: <span className="text-primary font-bold">16</span></span>
+          <span className="font-mono">Pillars: <span className="text-primary font-bold">17</span></span>
           <span className="text-border">|</span>
           <span className="font-mono">v3.0.0</span>
         </div>
