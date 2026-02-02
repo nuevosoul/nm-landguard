@@ -1775,8 +1775,9 @@ function generateInfrastructureSection(infraData: InfrastructureData): string {
 // === NEW LIVABILITY SECTIONS ===
 
 function generateAirQualitySection(airData: AirQualityData): string {
-  const aqiColor = airData.aqi <= 50 ? '#16a34a' : airData.aqi <= 100 ? '#ca8a04' : airData.aqi <= 150 ? '#ea580c' : '#dc2626';
-  const aqiLabel = airData.aqi <= 50 ? 'Good' : airData.aqi <= 100 ? 'Moderate' : airData.aqi <= 150 ? 'Unhealthy (Sensitive)' : 'Unhealthy';
+  const aqi = airData.aqi || 0;
+  const aqiColor = aqi <= 50 ? '#16a34a' : aqi <= 100 ? '#ca8a04' : aqi <= 150 ? '#ea580c' : '#dc2626';
+  const aqiLabel = aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy (Sensitive)' : 'Unhealthy';
   
   return `
     <h2>Air Quality Analysis</h2>
@@ -1787,13 +1788,13 @@ function generateAirQualitySection(airData: AirQualityData): string {
       </div>
       
       <div style="text-align: center; padding: 16px; margin: 12px 0; background: linear-gradient(135deg, ${aqiColor}20 0%, white 100%); border-radius: 8px;">
-        <div style="font-size: 48px; font-weight: 800; color: ${aqiColor};">${airData.aqi}</div>
+        <div style="font-size: 48px; font-weight: 800; color: ${aqiColor};">${aqi}</div>
         <div style="font-size: 12px; color: ${aqiColor}; font-weight: 600;">Air Quality Index</div>
       </div>
       
       <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
         <div class="stat-box">
-          <div class="stat-value">${airData.pm25.toFixed(1)}</div>
+          <div class="stat-value">${airData.pm25?.toFixed(1) || '--'}</div>
           <div class="stat-label">PM2.5 (μg/m³)</div>
         </div>
         <div class="stat-box">
@@ -1801,7 +1802,7 @@ function generateAirQualitySection(airData: AirQualityData): string {
           <div class="stat-label">Ozone (ppb)</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value">${airData.dominantPollutant}</div>
+          <div class="stat-value">${airData.dominantPollutant || 'N/A'}</div>
           <div class="stat-label">Main Pollutant</div>
         </div>
       </div>
@@ -1822,7 +1823,8 @@ function generateAirQualitySection(airData: AirQualityData): string {
 }
 
 function generatePollenSection(pollenData: PollenData): string {
-  const levelColor = (level: string) => {
+  const levelColor = (level: string | undefined) => {
+    if (!level) return '#64748b';
     switch(level.toLowerCase()) {
       case 'low': case 'none': return '#16a34a';
       case 'moderate': case 'medium': return '#ca8a04';
@@ -1837,20 +1839,20 @@ function generatePollenSection(pollenData: PollenData): string {
     <div class="finding-card">
       <div class="finding-header">
         <span class="finding-title">🌸 Seasonal Pollen Analysis</span>
-        <span class="status-badge" style="background: ${levelColor(pollenData.overallLevel)}; color: white;">${pollenData.overallLevel.toUpperCase()}</span>
+        <span class="status-badge" style="background: ${levelColor(pollenData.overallLevel)}; color: white;">${(pollenData.overallLevel || 'N/A').toUpperCase()}</span>
       </div>
       
       <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
         <div class="stat-box">
-          <div class="stat-value" style="color: ${levelColor(pollenData.treePollen.level)};">${pollenData.treePollen.index}</div>
+          <div class="stat-value" style="color: ${levelColor(pollenData.treePollen?.level)};">${pollenData.treePollen?.index ?? '--'}</div>
           <div class="stat-label">🌳 Tree Pollen</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value" style="color: ${levelColor(pollenData.grassPollen.level)};">${pollenData.grassPollen.index}</div>
+          <div class="stat-value" style="color: ${levelColor(pollenData.grassPollen?.level)};">${pollenData.grassPollen?.index ?? '--'}</div>
           <div class="stat-label">🌾 Grass Pollen</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value" style="color: ${levelColor(pollenData.weedPollen.level)};">${pollenData.weedPollen.index}</div>
+          <div class="stat-value" style="color: ${levelColor(pollenData.weedPollen?.level)};">${pollenData.weedPollen?.index ?? '--'}</div>
           <div class="stat-label">🌿 Weed Pollen</div>
         </div>
       </div>
@@ -1858,17 +1860,17 @@ function generatePollenSection(pollenData: PollenData): string {
       <div class="finding-items">
         <div class="finding-item">
           <span class="finding-label">Current Season</span>
-          <span class="finding-value">${pollenData.season}</span>
+          <span class="finding-value">${pollenData.season || 'N/A'}</span>
         </div>
         <div class="finding-item">
           <span class="finding-label">Overall Level</span>
-          <span class="finding-value" style="color: ${levelColor(pollenData.overallLevel)};">${pollenData.overallLevel}</span>
+          <span class="finding-value" style="color: ${levelColor(pollenData.overallLevel)};">${pollenData.overallLevel || 'N/A'}</span>
         </div>
       </div>
       
       <div class="data-source">
         <div class="data-source-title">Data Source</div>
-        <div class="data-source-text">${pollenData.source}</div>
+        <div class="data-source-text">${pollenData.source || 'Google Pollen API'}</div>
       </div>
     </div>
   `;
@@ -1880,24 +1882,24 @@ function generateWeatherSection(weatherData: WeatherData): string {
     <div class="finding-card">
       <div class="finding-header">
         <span class="finding-title">🌡️ Regional Climate Data</span>
-        <span class="status-badge" style="background: #0369a1; color: white;">${weatherData.climate.toUpperCase()}</span>
+        <span class="status-badge" style="background: #0369a1; color: white;">${(weatherData.climate || 'SEMI-ARID').toUpperCase()}</span>
       </div>
       
       <div class="stats-grid">
         <div class="stat-box">
-          <div class="stat-value">${weatherData.avgHighSummer}°F</div>
+          <div class="stat-value">${weatherData.avgHighSummer || '--'}°F</div>
           <div class="stat-label">Summer High</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value">${weatherData.avgLowWinter}°F</div>
+          <div class="stat-value">${weatherData.avgLowWinter || '--'}°F</div>
           <div class="stat-label">Winter Low</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value">${weatherData.sunnyDaysPerYear}</div>
+          <div class="stat-value">${weatherData.sunnyDaysPerYear || '--'}</div>
           <div class="stat-label">Sunny Days/Yr</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value">${weatherData.annualPrecipitation}"</div>
+          <div class="stat-value">${weatherData.annualPrecipitation || '--'}"</div>
           <div class="stat-label">Annual Precip</div>
         </div>
       </div>
@@ -1905,24 +1907,24 @@ function generateWeatherSection(weatherData: WeatherData): string {
       <div class="finding-items">
         <div class="finding-item">
           <span class="finding-label">Annual Snowfall</span>
-          <span class="finding-value">${weatherData.annualSnowfall}" average</span>
+          <span class="finding-value">${weatherData.annualSnowfall || '--'}" average</span>
         </div>
         <div class="finding-item">
           <span class="finding-label">Growing Season</span>
-          <span class="finding-value">${weatherData.growingSeasonDays} days</span>
+          <span class="finding-value">${weatherData.growingSeasonDays || '--'} days</span>
         </div>
       </div>
       
       <div class="data-source">
         <div class="data-source-title">Data Source</div>
-        <div class="data-source-text">${weatherData.source}</div>
+        <div class="data-source-text">${weatherData.source || 'NOAA Climate Data'}</div>
       </div>
     </div>
   `;
 }
 
 function generateCellCoverageSection(cellData: CellCoverageData): string {
-  const coverageColor = {
+  const coverageColor: Record<string, string> = {
     excellent: '#16a34a',
     good: '#22c55e',
     fair: '#ca8a04',
@@ -1930,18 +1932,20 @@ function generateCellCoverageSection(cellData: CellCoverageData): string {
     none: '#dc2626'
   };
   
+  const coverage = cellData.overallCoverage || 'fair';
+  
   return `
     <h2>Cellular Coverage</h2>
     <div class="finding-card">
       <div class="finding-header">
         <span class="finding-title">📱 Mobile Network Analysis</span>
-        <span class="status-badge" style="background: ${coverageColor[cellData.overallCoverage]}; color: white;">${cellData.overallCoverage.toUpperCase()}</span>
+        <span class="status-badge" style="background: ${coverageColor[coverage] || '#64748b'}; color: white;">${coverage.toUpperCase()}</span>
       </div>
       
       <div class="finding-items">
         <div class="finding-item">
           <span class="finding-label">Overall Coverage</span>
-          <span class="finding-value" style="color: ${coverageColor[cellData.overallCoverage]};">${cellData.overallCoverage.charAt(0).toUpperCase() + cellData.overallCoverage.slice(1)}</span>
+          <span class="finding-value" style="color: ${coverageColor[coverage] || '#64748b'};">${coverage.charAt(0).toUpperCase() + coverage.slice(1)}</span>
         </div>
         <div class="finding-item">
           <span class="finding-label">Area Type</span>
@@ -2043,7 +2047,8 @@ function generateBroadbandSection(broadbandData: BroadbandData): string {
 }
 
 function generateDarkSkySection(darkSkyData: DarkSkyData): string {
-  const bortleColor = darkSkyData.bortleClass <= 3 ? '#16a34a' : darkSkyData.bortleClass <= 5 ? '#22c55e' : darkSkyData.bortleClass <= 7 ? '#ca8a04' : '#dc2626';
+  const bortleClass = darkSkyData.bortleClass || 5;
+  const bortleColor = bortleClass <= 3 ? '#16a34a' : bortleClass <= 5 ? '#22c55e' : bortleClass <= 7 ? '#ca8a04' : '#dc2626';
   
   return `
     <div class="finding-card">
@@ -2052,8 +2057,8 @@ function generateDarkSkySection(darkSkyData: DarkSkyData): string {
       </div>
       
       <div style="text-align: center; padding: 12px; margin: 8px 0; background: #0f172a; border-radius: 8px;">
-        <div style="font-size: 28px; font-weight: 800; color: ${bortleColor};">Class ${darkSkyData.bortleClass}</div>
-        <div style="font-size: 10px; color: #94a3b8;">${darkSkyData.bortleDescription}</div>
+        <div style="font-size: 28px; font-weight: 800; color: ${bortleColor};">Class ${bortleClass}</div>
+        <div style="font-size: 10px; color: #94a3b8;">${darkSkyData.bortleDescription || 'Rural/Suburban Sky'}</div>
       </div>
       
       <div class="finding-items">
@@ -2063,19 +2068,20 @@ function generateDarkSkySection(darkSkyData: DarkSkyData): string {
         </div>
         <div class="finding-item">
           <span class="finding-label">Light Pollution</span>
-          <span class="finding-value">${darkSkyData.lightPollutionLevel}</span>
+          <span class="finding-value">${darkSkyData.lightPollutionLevel || 'N/A'}</span>
         </div>
       </div>
       
       <div class="data-source">
-        <div class="data-source-text">${darkSkyData.source}</div>
+        <div class="data-source-text">${darkSkyData.source || 'Light Pollution Atlas'}</div>
       </div>
     </div>
   `;
 }
 
 function generateNoiseSection(noiseLevelData: NoiseLevelData): string {
-  const noiseColor = noiseLevelData.overallLevel === 'quiet' ? '#16a34a' : noiseLevelData.overallLevel === 'moderate' ? '#ca8a04' : '#dc2626';
+  const noiseLevel = noiseLevelData.overallLevel || 'moderate';
+  const noiseColor = noiseLevel === 'quiet' ? '#16a34a' : noiseLevel === 'moderate' ? '#ca8a04' : '#dc2626';
   
   return `
     <div class="finding-card">
@@ -2084,21 +2090,21 @@ function generateNoiseSection(noiseLevelData: NoiseLevelData): string {
       </div>
       
       <div style="text-align: center; padding: 12px; margin: 8px 0; background: ${noiseColor}20; border-radius: 8px;">
-        <div style="font-size: 28px; font-weight: 800; color: ${noiseColor};">${noiseLevelData.estimatedDecibels} dB</div>
-        <div style="font-size: 10px; color: ${noiseColor}; text-transform: uppercase;">${noiseLevelData.overallLevel}</div>
+        <div style="font-size: 28px; font-weight: 800; color: ${noiseColor};">${noiseLevelData.estimatedDecibels || '--'} dB</div>
+        <div style="font-size: 10px; color: ${noiseColor}; text-transform: uppercase;">${noiseLevel}</div>
       </div>
       
       <div class="finding-items">
         ${noiseLevelData.nearestHighway ? `
           <div class="finding-item">
             <span class="finding-label">Nearest Highway</span>
-            <span class="finding-value">${noiseLevelData.nearestHighway.name} (${noiseLevelData.nearestHighway.distance.toFixed(1)} mi)</span>
+            <span class="finding-value">${noiseLevelData.nearestHighway.name || 'Highway'} (${noiseLevelData.nearestHighway.distance?.toFixed(1) || '--'} mi)</span>
           </div>
         ` : ''}
         ${noiseLevelData.nearestAirport ? `
           <div class="finding-item">
             <span class="finding-label">Nearest Airport</span>
-            <span class="finding-value">${noiseLevelData.nearestAirport.name} (${noiseLevelData.nearestAirport.distance.toFixed(1)} mi)</span>
+            <span class="finding-value">${noiseLevelData.nearestAirport.name || 'Airport'} (${noiseLevelData.nearestAirport.distance?.toFixed(1) || '--'} mi)</span>
           </div>
         ` : ''}
         <div class="finding-item">
@@ -2108,7 +2114,7 @@ function generateNoiseSection(noiseLevelData: NoiseLevelData): string {
       </div>
       
       <div class="data-source">
-        <div class="data-source-text">${noiseLevelData.source}</div>
+        <div class="data-source-text">${noiseLevelData.source || 'DOT Transportation Atlas'}</div>
       </div>
     </div>
   `;
