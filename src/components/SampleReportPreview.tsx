@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { FileText, AlertTriangle, MapPin, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { invokeFunction } from "@/lib/supabaseApi";
 
 interface SampleProperty {
   address: string;
@@ -127,19 +127,17 @@ const SampleReportPreview = ({ onViewSample }: SampleReportPreviewProps) => {
       setLoadingImages(prev => ({ ...prev, [index]: true }));
       
       try {
-        const { data, error } = await supabase.functions.invoke('static-map', {
-          body: { 
-            lat: property.lat, 
-            lng: property.lng,
-            zoom: 17,
-            size: "800x200"
-          },
+        const data = await invokeFunction('static-map', { 
+          lat: property.lat, 
+          lng: property.lng,
+          zoom: 17,
+          size: "800x200"
         });
         
-        if (!error && data?.imageUrl) {
+        if (data?.imageUrl) {
           setImageUrls(prev => ({ ...prev, [index]: data.imageUrl }));
         } else {
-          console.error('Static map error:', error);
+          console.error('Static map error: no imageUrl');
           setImageErrors(prev => ({ ...prev, [index]: true }));
         }
       } catch (error) {

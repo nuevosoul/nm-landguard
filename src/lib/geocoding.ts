@@ -1,6 +1,5 @@
 // Geocoding via Edge Function (supports address, legal description, and coordinates)
-import { supabase } from "@/lib/supabaseClient";
-
+import { invokeFunction } from "@/lib/supabaseApi";
 export interface GeocodingResult {
   lat: number;
   lng: number;
@@ -66,22 +65,7 @@ export async function geocodeAddress(
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('geocode', {
-      body: { address: searchQuery },
-    });
-
-    if (error) {
-      console.error("Geocoding error:", error);
-      return {
-        lat: 35.0844,
-        lng: -106.6504,
-        displayName: query,
-        accuracy: "area",
-        source: "fallback",
-        isError: true,
-        error: error.message || "Geocoding service error. Please try again.",
-      };
-    }
+    const data = await invokeFunction('geocode', { address: searchQuery });
 
     if (!data) {
       return {
@@ -122,15 +106,7 @@ export async function lookupPLSS(lat: number, lng: number): Promise<PLSSResult |
   console.log(`Looking up PLSS for: ${lat}, ${lng}`);
 
   try {
-    const { data, error } = await supabase.functions.invoke('plss-lookup', {
-      body: { lat, lng },
-    });
-
-    if (error) {
-      console.error("PLSS lookup error:", error);
-      return null;
-    }
-
+    const data = await invokeFunction('plss-lookup', { lat, lng });
     console.log("PLSS result:", data);
     return data as PLSSResult;
   } catch (error) {
