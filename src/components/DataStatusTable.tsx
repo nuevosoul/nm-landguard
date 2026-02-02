@@ -45,8 +45,8 @@ const dataSources: DataSource[] = [
     status: "live",
   },
   {
-    agency: "Google Places API",
-    dataLayer: "Infrastructure Proximity",
+    agency: "Google Places + Distance Matrix",
+    dataLayer: "Infrastructure & Drive Times",
     updateFreq: "Real-time",
     status: "live",
   },
@@ -63,9 +63,45 @@ const dataSources: DataSource[] = [
     status: "live",
   },
   {
-    agency: "USFS Wildfire",
-    dataLayer: "Wildfire Risk to Communities",
+    agency: "EPA Envirofacts",
+    dataLayer: "Environmental Hazards & Superfund",
+    updateFreq: "Weekly",
+    status: "live",
+  },
+  {
+    agency: "Google Air Quality API",
+    dataLayer: "AQI, PM2.5, Ozone Levels",
+    updateFreq: "Hourly",
+    status: "live",
+  },
+  {
+    agency: "Google Pollen API",
+    dataLayer: "Allergen & Pollen Forecast",
     updateFreq: "Daily",
+    status: "live",
+  },
+  {
+    agency: "FCC Broadband Map",
+    dataLayer: "Internet & Cell Coverage",
+    updateFreq: "Monthly",
+    status: "live",
+  },
+  {
+    agency: "Light Pollution Analysis",
+    dataLayer: "Dark Sky / Bortle Class",
+    updateFreq: "Static",
+    status: "live",
+  },
+  {
+    agency: "Transportation Infrastructure",
+    dataLayer: "Noise & Highway Proximity",
+    updateFreq: "Static",
+    status: "live",
+  },
+  {
+    agency: "NM Regional Climate Data",
+    dataLayer: "Weather & Climate Patterns",
+    updateFreq: "Seasonal",
     status: "live",
   },
 ];
@@ -84,7 +120,7 @@ const DataStatusTable = () => {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-display text-lg font-semibold text-foreground tracking-tight">
-              10-PILLAR DATA MATRIX
+              16-PILLAR DATA MATRIX
             </h2>
             <p className="text-[9px] text-muted-foreground mt-0.5 font-mono uppercase tracking-wider">
               Last sync: {new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC
@@ -92,7 +128,7 @@ const DataStatusTable = () => {
           </div>
           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-status-safe-bg border border-status-safe/30">
             <Circle className="w-1.5 h-1.5 fill-status-safe text-status-safe animate-pulse" />
-            <span className="text-[9px] font-mono font-bold text-status-safe">10/10 PILLARS ONLINE</span>
+            <span className="text-[9px] font-mono font-bold text-status-safe">16/16 PILLARS ONLINE</span>
           </div>
         </div>
 
@@ -146,7 +182,7 @@ const DataStatusTable = () => {
           <span className="text-border">|</span>
           <span className="font-mono">Uptime: <span className="text-status-safe font-bold">99.97%</span></span>
           <span className="text-border">|</span>
-          <span className="font-mono">Pillars: <span className="text-primary font-bold">10</span></span>
+          <span className="font-mono">Pillars: <span className="text-primary font-bold">16</span></span>
           <span className="text-border">|</span>
           <span className="font-mono">v3.0.0</span>
         </div>
