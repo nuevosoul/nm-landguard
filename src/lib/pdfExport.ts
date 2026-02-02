@@ -1306,7 +1306,7 @@ function generateCulturalSection(
   
   if (cd) {
     if (cd.onTribalLand && cd.nearestTribalLand) {
-      findings.push({ label: 'Tribal Land Status', value: `ON ${cd.nearestTribalLand.name.toUpperCase()}`, highlight: true });
+      findings.push({ label: 'Tribal Land Status', value: `ON ${(cd.nearestTribalLand.name || 'TRIBAL LAND').toUpperCase()}`, highlight: true });
     } else if (cd.nearestTribalLand) {
       findings.push({ label: 'Tribal Land Status', value: 'OFF tribal boundaries' });
       findings.push({ label: 'Nearest Tribal Land', value: `${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(1)} mi)` });
@@ -1553,14 +1553,15 @@ function generateFloodSection(floodData: FloodData): string {
     minimal: { bg: "#dcfce7", text: "#166534" },
   };
   
-  const config = riskColors[floodData.riskLevel] || riskColors.minimal;
+  const riskLevel = floodData.riskLevel || 'minimal';
+  const config = riskColors[riskLevel] || riskColors.minimal;
   
   return `
     <h2>FEMA Flood Zone Analysis</h2>
     <div class="finding-card">
       <div class="finding-header">
         <span class="finding-title">National Flood Hazard Layer</span>
-        <span class="status-badge" style="background: ${config.text}; color: white;">${floodData.riskLevel.toUpperCase()}</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${riskLevel.toUpperCase()}</span>
       </div>
       
       <div style="text-align: center; padding: 16px; margin: 12px 0; background: ${config.bg}; border-radius: 8px; border: 2px solid ${config.text};">
@@ -1579,7 +1580,7 @@ function generateFloodSection(floodData: FloodData): string {
         </div>
         <div class="finding-item">
           <span class="finding-label">Risk Level</span>
-          <span class="finding-value">${floodData.riskLevel.charAt(0).toUpperCase() + floodData.riskLevel.slice(1)}</span>
+          <span class="finding-value">${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}</span>
         </div>
       </div>
       
@@ -1605,9 +1606,10 @@ function generateFloodSection(floodData: FloodData): string {
 
 function generateEPASection(epaData: EPAData): string {
   const { summary } = epaData;
-  const config = summary.overallRisk === 'low' 
+  const overallRisk = summary?.overallRisk || 'low';
+  const config = overallRisk === 'low' 
     ? { bg: "#dcfce7", text: "#166534" }
-    : summary.overallRisk === 'high'
+    : overallRisk === 'high'
     ? { bg: "#fee2e2", text: "#991b1b" }
     : { bg: "#fef3c7", text: "#92400e" };
   
@@ -1616,7 +1618,7 @@ function generateEPASection(epaData: EPAData): string {
     <div class="finding-card">
       <div class="finding-header">
         <span class="finding-title">EPA Envirofacts Analysis</span>
-        <span class="status-badge" style="background: ${config.text}; color: white;">${summary.overallRisk.toUpperCase()} CONCERN</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${overallRisk.toUpperCase()} CONCERN</span>
       </div>
       
       <div class="stats-grid">
@@ -1645,7 +1647,7 @@ function generateEPASection(epaData: EPAData): string {
         </div>
         <div class="finding-item">
           <span class="finding-label">Overall Environmental Risk</span>
-          <span class="finding-value" style="color: ${config.text}; font-weight: 700;">${summary.overallRisk.toUpperCase()}</span>
+          <span class="finding-value" style="color: ${config.text}; font-weight: 700;">${overallRisk.toUpperCase()}</span>
         </div>
       </div>
       
@@ -1677,14 +1679,15 @@ function generateSolarSection(solarData: SolarData): string {
     poor: { bg: "#fee2e2", text: "#dc2626" },
   };
   
-  const config = potentialColors[solarData.solarPotential] || potentialColors.good;
+  const solarPotential = solarData.solarPotential || 'good';
+  const config = potentialColors[solarPotential] || potentialColors.good;
   
   return `
     <h2>Solar Development Potential</h2>
     <div class="finding-card" style="background: linear-gradient(135deg, ${config.bg}40 0%, white 100%);">
       <div class="finding-header">
         <span class="finding-title">☀️ Google Solar API Analysis</span>
-        <span class="status-badge" style="background: ${config.text}; color: white;">${solarData.solarPotential.toUpperCase()}</span>
+        <span class="status-badge" style="background: ${config.text}; color: white;">${solarPotential.toUpperCase()}</span>
       </div>
       
       <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
@@ -1877,12 +1880,14 @@ function generatePollenSection(pollenData: PollenData): string {
 }
 
 function generateWeatherSection(weatherData: WeatherData): string {
+  const climate = typeof weatherData.climate === 'string' ? weatherData.climate : 'Semi-Arid';
+  
   return `
     <h2>Climate & Weather Profile</h2>
     <div class="finding-card">
       <div class="finding-header">
         <span class="finding-title">🌡️ Regional Climate Data</span>
-        <span class="status-badge" style="background: #0369a1; color: white;">${(weatherData.climate || 'SEMI-ARID').toUpperCase()}</span>
+        <span class="status-badge" style="background: #0369a1; color: white;">${climate.toUpperCase()}</span>
       </div>
       
       <div class="stats-grid">
