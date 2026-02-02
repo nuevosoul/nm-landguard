@@ -2360,23 +2360,54 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
               <BookOpen className="w-5 h-5 text-muted-foreground" />
               <h3 className="font-display font-semibold text-foreground">Data Sources & Methodology</h3>
             </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              This report aggregates data from 16 authoritative sources. All data is retrieved in real-time via official APIs and public records. 
+              Distances are calculated using geodesic formulas; drive times use Google Distance Matrix routing.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
               <div>
-                <p className="font-medium text-foreground mb-1">Cultural Resources</p>
-                <p>NMCRIS Database (ARMS), NM SHPO Records, National Register of Historic Places</p>
+                <p className="font-medium text-foreground mb-1">Cultural & Historic</p>
+                <p>BIA AIAN Land Areas, National Register of Historic Places (NPS), NM SHPO NMCRIS/ARMS Database</p>
               </div>
               <div>
                 <p className="font-medium text-foreground mb-1">Water & Flood</p>
-                <p>NM OSE WATERS, FEMA NFHL, Declared Basin Records</p>
+                <p>NM Office of State Engineer (OSE), FEMA National Flood Hazard Layer (NFHL), FIRM Panels</p>
               </div>
               <div>
-                <p className="font-medium text-foreground mb-1">Environmental</p>
-                <p>EPA Envirofacts, USFWS Critical Habitat, NWI, IPaC Database</p>
+                <p className="font-medium text-foreground mb-1">Environmental Hazards</p>
+                <p>EPA Envirofacts (Superfund, TRI, Brownfields, RCRA), USFWS IPaC Critical Habitat</p>
               </div>
               <div>
                 <p className="font-medium text-foreground mb-1">Terrain & Soil</p>
-                <p>Google Elevation API, USDA NRCS SSURGO Web Soil Survey</p>
+                <p>Google Maps Elevation API, USDA NRCS SSURGO/Web Soil Survey, USGS 3DEP</p>
               </div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Property & Parcel</p>
+                <p>Regrid Parcel Data (nationwide), County Assessor GIS Services (Bernalillo, Santa Fe, Rio Arriba)</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Solar & Infrastructure</p>
+                <p>Google Solar API (Building Insights), Google Places API, Google Distance Matrix API</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Air Quality & Allergens</p>
+                <p>Google Air Quality API (EPA AQI scale), Google Pollen API (tree/grass/weed forecasts)</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground mb-1">Connectivity & Climate</p>
+                <p>FCC Broadband Map (fixed/mobile), NM Regional Climate Data, Light Pollution Analysis (Bortle scale)</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
+              <p className="mb-2"><strong className="text-foreground">Methodology Notes:</strong></p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Tribal land boundaries sourced from BIA American Indian/Alaska Native Land Areas dataset</li>
+                <li>Flood zones determined by FEMA NFHL point-in-polygon analysis</li>
+                <li>Drive times calculated via Google Distance Matrix API using typical traffic conditions</li>
+                <li>Dark sky/Bortle class estimated from proximity to population centers and light pollution models</li>
+                <li>Cell coverage combines FCC Form 477 data with regional carrier estimates</li>
+                <li>Air quality and pollen data reflects conditions at time of report generation</li>
+              </ul>
             </div>
           </div>
         </section>
@@ -2396,14 +2427,22 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                   ASTM E1527-21, nor does it replace formal consultation with regulatory agencies. Data accuracy is dependent on 
                   source agency updates and may not reflect the most recent filings or determinations.
                 </p>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                  <strong className="text-foreground">Livability Data:</strong> Air quality, pollen, weather, cell coverage, broadband availability, 
+                  and noise estimates are provided for informational purposes only. These metrics reflect conditions at the time of report 
+                  generation and may vary seasonally or change over time. Cell and internet coverage should be verified directly with carriers 
+                  before purchase. Dark sky ratings are estimates based on proximity to light sources and may not reflect actual observing conditions.
+                </p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Rio Grande Due Diligence LLC makes no warranties, express or implied, regarding the completeness or accuracy of 
-                  this report. Users should verify all findings with the appropriate regulatory agencies before making development 
-                  decisions. This report is valid for 90 days from the date of generation. For official determinations, contact 
-                  the relevant state and federal agencies directly.
+                  this report. Users should verify all findings with the appropriate regulatory agencies and service providers before making 
+                  purchase or development decisions. This report is valid for 90 days from the date of generation. For official determinations, 
+                  contact the relevant state and federal agencies directly.
                 </p>
                 <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 text-xs text-muted-foreground">
-                  <span>Report Version: 2.1</span>
+                  <span>Report Version: 3.0</span>
+                  <span>•</span>
+                  <span>Data Pillars: 16</span>
                   <span>•</span>
                   <span>Generated by: Rio Grande Due Diligence Platform</span>
                   <span>•</span>
