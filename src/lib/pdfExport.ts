@@ -2144,18 +2144,28 @@ function generateElevationSection(elevationData: ElevationData): string {
 }
 
 export function downloadPDF(data: ReportData): void {
-  const htmlContent = generatePDFContent(data);
-  
-  const printWindow = window.open("", "_blank", "width=900,height=700");
-  
-  if (printWindow) {
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+  try {
+    console.log('PDF Export: Starting generation...', data);
+    const htmlContent = generatePDFContent(data);
+    console.log('PDF Export: HTML generated, length:', htmlContent.length);
     
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    };
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+    } else {
+      console.error('PDF Export: Failed to open print window - popup may be blocked');
+      alert('Could not open print window. Please allow popups for this site.');
+    }
+  } catch (error) {
+    console.error('PDF Export: Error generating PDF:', error);
+    alert('Error generating PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 }
