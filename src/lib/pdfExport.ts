@@ -1301,72 +1301,62 @@ function generateCulturalSection(
   statusConfig: { bg: string; text: string; label: string }
 ): string {
   const cd = culturalData;
-  
-  const findings: { label: string; value: string; highlight?: boolean }[] = [];
-  
-  if (cd) {
-    if (cd.onTribalLand && cd.nearestTribalLand) {
-      findings.push({ label: 'Tribal Land Status', value: `ON ${(cd.nearestTribalLand.name || 'TRIBAL LAND').toUpperCase()}`, highlight: true });
-    } else if (cd.nearestTribalLand) {
-      findings.push({ label: 'Tribal Land Status', value: 'OFF tribal boundaries' });
-      findings.push({ label: 'Nearest Tribal Land', value: `${cd.nearestTribalLand.name} (${cd.nearestTribalLand.distance.toFixed(1)} mi)` });
-    } else {
-      findings.push({ label: 'Tribal Land Status', value: 'OFF tribal boundaries' });
-    }
-    
-    if (cd.tribalLandsWithin5Miles.length > 0) {
-      findings.push({ label: 'Tribal Lands Within 5 Miles', value: `${cd.tribalLandsWithin5Miles.length} identified` });
-    }
-    
-    findings.push({ label: 'NRHP Properties Within 1 Mile', value: cd.nrhpPropertiesWithin1Mile.length > 0 ? `${cd.nrhpPropertiesWithin1Mile.length} listed` : 'None found' });
-    findings.push({ label: 'Historic District', value: cd.inHistoricDistrict ? `Within ${cd.historicDistrictName || 'district'}` : 'Not within historic district' });
-    findings.push({ label: 'Section 106 Review Required', value: cd.section106Required ? 'Yes' : 'No' });
-    findings.push({ label: 'Tribal Consultation Required', value: cd.tribalConsultationRequired ? 'Yes' : 'No' });
-  }
-  
-  const recommendations = cd?.recommendedActions || [
-    "Commission Phase I Archaeological Survey before ground disturbance",
-    "Submit NMCRIS Project ID application to SHPO",
-    "Initiate tribal consultation per NHPA Section 106"
-  ];
+  const isOnTribalLand = cd?.onTribalLand || false;
+  const tribalLandName = cd?.nearestTribalLand?.name || 'Tribal Land';
   
   return `
     <h2>Cultural Resources Assessment</h2>
     <div class="finding-card">
       <div class="finding-header">
         <div>
-          <span class="finding-title">Tribal Lands & Historic Properties Analysis</span>
+          <span class="finding-title">Tribal Land Status</span>
         </div>
-        <span class="status-badge" style="background: ${statusConfig.text}; color: white;">${statusConfig.label}</span>
+        <span class="status-badge" style="background: ${isOnTribalLand ? '#991b1b' : '#166534'}; color: white;">${isOnTribalLand ? 'ON TRIBAL LAND' : 'OFF TRIBAL LAND'}</span>
       </div>
       
-      <div class="finding-items">
-        ${findings.map(f => `
-          <div class="finding-item">
-            <span class="finding-label">${f.label}</span>
-            <span class="finding-value" ${f.highlight ? 'style="color: #991b1b; font-weight: 700;"' : ''}>${f.value}</span>
+      ${isOnTribalLand ? `
+        <div class="alert-box alert-danger" style="margin-top: 12px;">
+          <div class="alert-title">⚠️ Property Located on ${tribalLandName}</div>
+          This property is within tribal boundaries. Development requires tribal consultation and approval. Contact the tribal government directly for permitting requirements.
+        </div>
+      ` : `
+        <div class="alert-box alert-success" style="margin-top: 12px;">
+          <div class="alert-title">✓ Property Not on Tribal Land</div>
+          This property is outside tribal boundaries. Standard county/state permitting applies.
+        </div>
+      `}
+      
+      <div class="finding-items" style="margin-top: 16px;">
+        <div class="finding-item">
+          <span class="finding-label">Historic District</span>
+          <span class="finding-value">${cd?.inHistoricDistrict ? `Within ${cd.historicDistrictName || 'historic district'}` : 'No'}</span>
+        </div>
+        <div class="finding-item">
+          <span class="finding-label">NRHP Listed Properties Nearby</span>
+          <span class="finding-value">${cd?.nrhpPropertiesWithin1Mile && cd.nrhpPropertiesWithin1Mile.length > 0 ? `${cd.nrhpPropertiesWithin1Mile.length} within 1 mile` : 'None identified'}</span>
+        </div>
+      </div>
+      
+      <div class="alert-box alert-info" style="margin-top: 16px;">
+        <div class="alert-title">New Mexico's Cultural Heritage</div>
+        <div style="font-size: 10px; line-height: 1.5;">
+          New Mexico has one of the richest archaeological records in North America, with over 190,000 recorded sites. 
+          If you discover artifacts, human remains, or archaeological features during construction:
+          <ul style="margin: 8px 0 0 16px;">
+            <li><strong>Stop work immediately</strong> in that area</li>
+            <li>Do not disturb or remove any materials</li>
+            <li>Contact the NM Historic Preservation Division: <strong>(505) 827-6320</strong></li>
+            <li>Report to local law enforcement if human remains are found</li>
+          </ul>
+          <div style="margin-top: 8px; font-style: italic;">
+            Unauthorized excavation or removal of artifacts is a federal crime under the Archaeological Resources Protection Act.
           </div>
-        `).join('')}
-      </div>
-      
-      ${cd?.tribalLandsWithin5Miles && cd.tribalLandsWithin5Miles.length > 0 ? `
-        <div class="alert-box alert-warning" style="margin-top: 12px;">
-          <div class="alert-title">Tribal Lands Within 5 Miles</div>
-          ${cd.tribalLandsWithin5Miles.slice(0, 3).map(t => `• ${t.name} (${t.distance.toFixed(2)} mi)`).join('<br/>')}
-          ${cd.tribalLandsWithin5Miles.length > 3 ? `<br/><em>...and ${cd.tribalLandsWithin5Miles.length - 3} more</em>` : ''}
         </div>
-      ` : ''}
-      
-      <div class="recommendations">
-        <h4>Recommended Actions</h4>
-        <ol>
-          ${recommendations.map(r => `<li>${r}</li>`).join('')}
-        </ol>
       </div>
       
       <div class="data-source">
         <div class="data-source-title">Data Source</div>
-        <div class="data-source-text">${cd?.source || 'Census TIGER AIAN, BIA National LAR, NPS NRHP'}</div>
+        <div class="data-source-text">${cd?.source || 'BIA AIAN Land Areas, Census TIGER, NPS NRHP'}</div>
       </div>
     </div>
   `;
