@@ -368,6 +368,16 @@ interface NoiseLevelData {
   source: string;
 }
 
+interface StreetViewData {
+  available: boolean;
+  imageUrl: string | null;
+  heading: number;
+  pitch: number;
+  fov: number;
+  source: string;
+  note: string;
+}
+
 interface ParcelData {
   found: boolean;
   parcelNumber: string | null;
@@ -441,6 +451,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const [isLoadingDarkSky, setIsLoadingDarkSky] = useState(false);
   const [noiseLevelData, setNoiseLevelData] = useState<NoiseLevelData | null>(null);
   const [isLoadingNoiseLevel, setIsLoadingNoiseLevel] = useState(false);
+  const [streetViewData, setStreetViewData] = useState<StreetViewData | null>(null);
+  const [isLoadingStreetView, setIsLoadingStreetView] = useState(false);
+  const [satelliteMapUrl, setSatelliteMapUrl] = useState<string | null>(null);
 
   // Extract county from geocoded display name
   const extractCounty = (displayName: string): string => {
@@ -757,6 +770,36 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     }
   };
 
+  // Fetch Street View data
+  const fetchStreetViewData = async (lat: number, lng: number) => {
+    setIsLoadingStreetView(true);
+    
+    try {
+      const data = await invokeFunction('street-view', { lat, lng });
+      if (data) {
+        setStreetViewData(data);
+        console.log("Street view data loaded:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching street view data:", error);
+    } finally {
+      setIsLoadingStreetView(false);
+    }
+  };
+
+  // Fetch Satellite Map (high zoom)
+  const fetchSatelliteMap = async (lat: number, lng: number) => {
+    try {
+      const data = await invokeFunction('static-map', { lat, lng, zoom: 18 });
+      if (data && data.imageUrl) {
+        setSatelliteMapUrl(data.imageUrl);
+        console.log("Satellite map loaded");
+      }
+    } catch (error) {
+      console.error("Error fetching satellite map:", error);
+    }
+  };
+
   // Fetch PLSS/legal description when component mounts
   useEffect(() => {
     const fetchAllPropertyData = async () => {
@@ -788,6 +831,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
           fetchBroadbandData(geocodeResult.lat, geocodeResult.lng);
           fetchDarkSkyData(geocodeResult.lat, geocodeResult.lng);
           fetchNoiseLevelData(geocodeResult.lat, geocodeResult.lng);
+          fetchStreetViewData(geocodeResult.lat, geocodeResult.lng);
+          fetchSatelliteMap(geocodeResult.lat, geocodeResult.lng);
           
           // Then lookup PLSS
           const plss = await lookupPLSS(geocodeResult.lat, geocodeResult.lng);
@@ -1998,6 +2043,76 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                   toast.success("PDF report opened for printing/download");
                 }}
               />
+            </div>
+          </div>
+        </section>
+
+        {/* Property Views - Street View & Satellite */}
+        <section className="mb-10">
+          <h2 className="font-display text-2xl font-semibold text-foreground mb-6">Property Views</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Street View */}
+            <div className="rounded-xl bg-card border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  Street View
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">Road frontage and access</p>
+              </div>
+              <div className="aspect-video bg-muted relative">
+                {isLoadingStreetView ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : streetViewData?.available && streetViewData?.imageUrl ? (
+                  <img 
+                    src={streetViewData.imageUrl} 
+                    alt="Street View of property" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-4">
+                    <MapPin className="w-12 h-12 mb-2 opacity-30" />
+                    <p className="text-sm font-medium">No Street View Available</p>
+                    <p className="text-xs text-center mt-1">
+                      {streetViewData?.note || "Street View coverage is not available for this rural location."}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {streetViewData?.available && (
+                <div className="p-3 text-xs text-muted-foreground border-t border-border">
+                  {streetViewData.note}
+                </div>
+              )}
+            </div>
+
+            {/* Satellite View */}
+            <div className="rounded-xl bg-card border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
+                  <Map className="w-4 h-4 text-primary" />
+                  Satellite View
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">Aerial perspective of the parcel</p>
+              </div>
+              <div className="aspect-video bg-muted relative">
+                {satelliteMapUrl ? (
+                  <img 
+                    src={satelliteMapUrl} 
+                    alt="Satellite view of property" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <div className="p-3 text-xs text-muted-foreground border-t border-border">
+                Source: Google Maps Static API • Satellite imagery may not reflect current conditions
+              </div>
             </div>
           </div>
         </section>
