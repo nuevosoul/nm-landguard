@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import logoImage from "@/assets/logo-dark.png";
 import { lookupPLSS, geocodeAddress, type PLSSResult } from "@/lib/geocoding";
 import { getEssentialContacts, formatContactForDisplay } from "@/lib/regulatoryContacts";
-import { supabase } from "@/lib/supabaseClient";
+import { invokeFunction } from "@/lib/supabaseApi";
 import RiskRadarChart from "./RiskRadarChart";
 import ExportPackage from "./ExportPackage";
 import MapLayerControl from "./MapLayerControl";
@@ -368,15 +368,13 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
   const fetchPropertyLookup = async (lat: number, lng: number) => {
     setIsLoadingProperty(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('property-lookup', {
-        body: { lat, lng },
-      });
+      const result = await invokeFunction('property-lookup', { lat, lng });
 
-      if (!error && result?.success && result.data) {
+      if (result?.success && result.data) {
         setPropertyData(result.data);
         console.log('Property data loaded:', result.data);
       } else {
-        console.log('Property lookup failed:', error?.message || result?.error || result?.message);
+        console.log('Property lookup failed:', result?.error || result?.message);
       }
     } catch (error) {
       console.error('Property lookup error:', error);
@@ -390,17 +388,17 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingEnvironmental(true);
     
     try {
-      // Fetch all environmental data in parallel using supabase client
+      // Fetch all environmental data in parallel using direct API calls
       const [floodRes, epaRes, elevRes, soilRes] = await Promise.allSettled([
-        supabase.functions.invoke('fema-flood', { body: { lat, lng } }),
-        supabase.functions.invoke('epa-envirofacts', { body: { lat, lng, radiusMiles: 5 } }),
-        supabase.functions.invoke('elevation', { body: { lat, lng } }),
-        supabase.functions.invoke('soil-survey', { body: { lat, lng } }),
+        invokeFunction('fema-flood', { lat, lng }),
+        invokeFunction('epa-envirofacts', { lat, lng, radiusMiles: 5 }),
+        invokeFunction('elevation', { lat, lng }),
+        invokeFunction('soil-survey', { lat, lng }),
       ]);
 
       // Process FEMA flood data
-      if (floodRes.status === "fulfilled" && !floodRes.value.error && floodRes.value.data) {
-        const data = floodRes.value.data;
+      if (floodRes.status === "fulfilled" && floodRes.value) {
+        const data = floodRes.value;
         if (!data.error) {
           setFloodData(data);
           console.log("Flood data loaded:", data);
@@ -408,8 +406,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
 
       // Process EPA data
-      if (epaRes.status === "fulfilled" && !epaRes.value.error && epaRes.value.data) {
-        const data = epaRes.value.data;
+      if (epaRes.status === "fulfilled" && epaRes.value) {
+        const data = epaRes.value;
         if (!data.error) {
           setEpaData(data);
           console.log("EPA data loaded:", data.summary);
@@ -417,8 +415,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
 
       // Process elevation data
-      if (elevRes.status === "fulfilled" && !elevRes.value.error && elevRes.value.data) {
-        const data = elevRes.value.data;
+      if (elevRes.status === "fulfilled" && elevRes.value) {
+        const data = elevRes.value;
         if (!data.error) {
           setElevationData(data);
           console.log("Elevation data loaded:", data);
@@ -426,8 +424,8 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
       }
 
       // Process soil data
-      if (soilRes.status === "fulfilled" && !soilRes.value.error && soilRes.value.data) {
-        const data = soilRes.value.data;
+      if (soilRes.status === "fulfilled" && soilRes.value) {
+        const data = soilRes.value;
         if (!data.error) {
           setSoilData(data);
           console.log("Soil data loaded:", data);
@@ -445,11 +443,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingCultural(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('cultural-resources', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('cultural-resources', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setCulturalData(data);
         console.log("Cultural resources data loaded:", data);
       }
@@ -465,11 +461,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingSolar(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('google-solar', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('google-solar', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setSolarData(data);
         console.log("Solar data loaded:", data);
       }
@@ -485,11 +479,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingInfrastructure(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('google-places', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('google-places', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setInfrastructureData(data);
         console.log("Infrastructure data loaded:", data);
       }
@@ -505,11 +497,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingParcel(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('regrid-parcel', {
-        body: { lat, lng, address: addr },
-      });
+      const data = await invokeFunction('regrid-parcel', { lat, lng, address: addr });
 
-      if (!error && data?.found) {
+      if (data?.found) {
         setParcelData(data);
         console.log("Parcel data loaded:", data);
       } else {
@@ -1121,14 +1111,12 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                   let satelliteMapUrl: string | undefined;
                   if (coordinates?.lat && coordinates?.lng) {
                     try {
-                      const { data: mapData, error: mapError } = await supabase.functions.invoke('static-map', {
-                        body: { 
-                          lat: coordinates.lat, 
-                          lng: coordinates.lng,
-                          parcelGeometry: propertyData?.parcelGeometry
-                        }
+                      const mapData = await invokeFunction('static-map', { 
+                        lat: coordinates.lat, 
+                        lng: coordinates.lng,
+                        parcelGeometry: propertyData?.parcelGeometry
                       });
-                      if (!mapError && mapData?.imageUrl) {
+                      if (mapData?.imageUrl) {
                         satelliteMapUrl = mapData.imageUrl;
                       }
                     } catch (err) {

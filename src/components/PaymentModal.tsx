@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, CreditCard, Lock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { invokeFunction } from "@/lib/supabaseApi";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -27,17 +27,11 @@ const PaymentModal = ({
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("create-checkout", {
-        body: {
-          address,
-          coordinates,
-          queryType,
-        },
+      const data = await invokeFunction("create-checkout", {
+        address,
+        coordinates,
+        queryType,
       });
-
-      if (fnError) {
-        throw new Error(fnError.message || "Failed to create checkout session");
-      }
 
       if (!data?.url) {
         throw new Error("No checkout URL returned");

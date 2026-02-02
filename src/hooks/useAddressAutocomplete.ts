@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { invokeFunction } from "@/lib/supabaseApi";
 
 interface Suggestion {
   displayName: string;
@@ -21,16 +21,8 @@ export function useAddressAutocomplete(query: string, enabled = true) {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('autocomplete', {
-        body: { query: searchQuery },
-      });
-
-      if (!error && data) {
-        setSuggestions(data.suggestions || []);
-      } else {
-        console.error("Autocomplete error:", error);
-        setSuggestions([]);
-      }
+      const data = await invokeFunction('autocomplete', { query: searchQuery });
+      setSuggestions(data.suggestions || []);
     } catch (error) {
       console.error("Autocomplete error:", error);
       setSuggestions([]);

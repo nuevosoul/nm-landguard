@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { geocodeAddress, type QueryType } from "@/lib/geocoding";
 import { Loader2, AlertTriangle, RefreshCw, Droplets, Satellite, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { invokeFunction } from "@/lib/supabaseApi";
 
 interface GISMapProps {
   address: string;
@@ -280,15 +280,7 @@ const GISMap = ({ address, queryType = "address", onWellDataLoaded, parcelGeomet
       
       try {
         console.log(`Fetching OSE well data... (attempt ${retryAttempt + 1})`);
-        const { data, error } = await supabase.functions.invoke('ose-wells', {
-          body: { lat, lng, radiusMiles: 1 }
-        });
-
-        if (error) {
-          console.error('Error fetching well data:', error);
-          setIsLoadingWells(false);
-          return;
-        }
+        const data = await invokeFunction('ose-wells', { lat, lng, radiusMiles: 1 });
 
         console.log('OSE well data received:', data);
         

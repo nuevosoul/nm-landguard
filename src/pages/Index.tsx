@@ -12,7 +12,7 @@ import LoadingState from "@/components/LoadingState";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import Footer from "@/components/Footer";
 import SystemStatusTicker from "@/components/SystemStatusTicker";
-import { supabase } from "@/lib/supabaseClient";
+import { invokeFunction } from "@/lib/supabaseApi";
 import { useToast } from "@/hooks/use-toast";
 
 type AppState = "landing" | "payment" | "loading" | "results" | "sample";
@@ -49,12 +49,10 @@ const Index = () => {
 
   const verifyPayment = async (sessionId: string | null, orderRef: string | null) => {
     try {
-      const { data, error } = await supabase.functions.invoke("verify-payment", {
-        body: { sessionId, orderRef },
-      });
+      const data = await invokeFunction("verify-payment", { sessionId, orderRef });
 
-      if (error || !data?.verified) {
-        console.error("Payment verification failed:", error || data?.error);
+      if (!data?.verified) {
+        console.error("Payment verification failed:", data?.error);
         toast({
           title: "Verification failed",
           description: "We couldn't verify your payment. Please contact support if you were charged.",
