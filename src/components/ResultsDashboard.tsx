@@ -636,11 +636,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingAirQuality(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('air-quality', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('air-quality', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setAirQualityData(data);
         console.log("Air quality data loaded:", data);
       }
@@ -656,11 +654,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingPollen(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('pollen', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('pollen', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setPollenData(data);
         console.log("Pollen data loaded:", data);
       }
@@ -676,11 +672,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingWeather(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('weather', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('weather', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setWeatherData(data);
         console.log("Weather data loaded:", data);
       }
@@ -696,11 +690,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingCellCoverage(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('cell-coverage', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('cell-coverage', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setCellCoverageData(data);
         console.log("Cell coverage data loaded:", data);
       }
@@ -716,11 +708,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingBroadband(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('broadband', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('broadband', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setBroadbandData(data);
         console.log("Broadband data loaded:", data);
       }
@@ -736,11 +726,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingDarkSky(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('dark-sky', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('dark-sky', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setDarkSkyData(data);
         console.log("Dark sky data loaded:", data);
       }
@@ -756,11 +744,9 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
     setIsLoadingNoiseLevel(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('noise-level', {
-        body: { lat, lng },
-      });
+      const data = await invokeFunction('noise-level', { lat, lng });
 
-      if (!error && data && !data.error) {
+      if (data && !data.error) {
         setNoiseLevelData(data);
         console.log("Noise level data loaded:", data);
       }
