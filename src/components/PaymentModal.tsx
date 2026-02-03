@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { X, CreditCard, Lock, ExternalLink } from "lucide-react";
+import { X, CreditCard, Lock, ExternalLink, Tag, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { invokeFunction } from "@/lib/supabaseApi";
 
 interface PaymentModalProps {
@@ -21,6 +22,10 @@ const PaymentModal = ({
 }: PaymentModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoMessage, setPromoMessage] = useState("");
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
 
   const handleCheckout = async () => {
     setIsProcessing(true);
@@ -43,6 +48,39 @@ const PaymentModal = ({
       console.error("Checkout error:", err);
       setError(err instanceof Error ? err.message : "Payment setup failed. Please try again.");
       setIsProcessing(false);
+    }
+  };
+
+  const handlePromoCode = async () => {
+    if (!promoCode.trim()) return;
+
+    setIsCheckingPromo(true);
+    setError(null);
+    setPromoMessage("");
+
+    try {
+      const data = await invokeFunction("redeem-promo", {
+        promoCode: promoCode.trim(),
+        address,
+        coordinates,
+        queryType,
+      });
+
+      if (data?.success && data?.orderRef) {
+        setPromoApplied(true);
+        setPromoMessage(data.message || "Promo code applied!");
+        
+        // Redirect to success page with order ref (same flow as Stripe)
+        const origin = window.location.origin;
+        window.location.href = `${origin}/?payment=success&order=${data.orderRef}`;
+      } else {
+        setError(data?.error || "Invalid promo code");
+      }
+    } catch (err) {
+      console.error("Promo error:", err);
+      setError(err instanceof Error ? err.message : "Failed to apply promo code");
+    } finally {
+      setIsCheckingPromo(false);
     }
   };
 
@@ -72,7 +110,7 @@ const PaymentModal = ({
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-muted transition-colors"
-            disabled={isProcessing}
+            disabled={isProcessing || isCheckingPromo}
           >
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
@@ -87,6 +125,43 @@ const PaymentModal = ({
               <span className="font-semibold text-foreground">$499.00</span>
             </div>
             <p className="text-xs text-muted-foreground truncate">{address}</p>
+          </div>
+
+          {/* Promo code section */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              Have a promo code?
+            </label>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Enter code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                disabled={isCheckingPromo || promoApplied}
+                className="flex-1 uppercase"
+              />
+              <Button
+                variant="outline"
+                onClick={handlePromoCode}
+                disabled={!promoCode.trim() || isCheckingPromo || promoApplied}
+              >
+                {isCheckingPromo ? (
+                  <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                ) : promoApplied ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </div>
+            {promoMessage && (
+              <p className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                {promoMessage}
+              </p>
+            )}
           </div>
 
           {/* What's included */}
@@ -129,7 +204,7 @@ const PaymentModal = ({
             size="lg"
             className="w-full"
             onClick={handleCheckout}
-            disabled={isProcessing}
+            disabled={isProcessing || isCheckingPromo}
           >
             {isProcessing ? (
               <>
