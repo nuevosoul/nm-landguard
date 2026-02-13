@@ -2144,29 +2144,100 @@ function generateElevationSection(elevationData: ElevationData): string {
   `;
 }
 
-export function downloadPDF(data: ReportData): void {
+export async function downloadPDF(data: ReportData): Promise<void> {
   try {
     console.log('PDF Export: Starting generation...', data);
     const htmlContent = generatePDFContent(data);
     console.log('PDF Export: HTML generated, length:', htmlContent.length);
-    
-    const printWindow = window.open("", "_blank", "width=900,height=700");
-    
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      };
-    } else {
-      console.error('PDF Export: Failed to open print window - popup may be blocked');
-      alert('Could not open print window. Please allow popups for this site.');
-    }
+
+    // Create a hidden container to render the HTML for html2pdf
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '850px';
+    document.body.appendChild(container);
+
+    // Parse the HTML and inject the body content (skip <html>/<head> wrapper)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+
+    // Copy styles into the container
+    const styles = doc.querySelectorAll('style');
+    styles.forEach(style => {
+      container.appendChild(style.cloneNode(true));
+    });
+
+    // Copy body content
+    const bodyContent = doc.body.innerHTML;
+    const contentDiv = document.createElement('div');
+    contentDiv.innerHTML = bodyContent;
+    container.appendChild(contentDiv);
+
+    // Generate filename from address
+    const safeAddress = (data.address || 'property-report')
+      .replace(/[^a-zA-Z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 50);
+    const filename = `RGDD-${data.reportId || safeAddress}-${new Date().toISOString().split('T')[0]}.pdf`;
+
+    // Use html2pdf.js for proper PDF generation
+    const html2pdf = (await import('html2pdf.js')).default;
+
+    await html2pdf()
+      .set({
+        margin: [0.3, 0.3, 0.3, 0.3],
+        filename,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          logging: false,
+        },
+        jsPDF: {
+          unit: 'in',
+          format: 'letter',
+          orientation: 'portrait',
+        },
+        pagebreak: { mode: ['css', 'legacy'], before: '.page' },
+      })
+      .from(container)
+      .save();
+
+    // Clean up
+    document.body.removeChild(container);
+    console.log('PDF Export: Download complete:', filename);
   } catch (error) {
     console.error('PDF Export: Error generating PDF:', error);
-    alert('Error generating PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    
+    // Fallback: try the iframe/print approach (less likely to be blocked than window.open)
+    try {
+      console.log('PDF Export: Falling back to iframe print...');
+      const htmlContent = generatePDFContent(data);
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '850px';
+      iframe.style.height = '1100px';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(htmlContent);
+        iframeDoc.close();
+        
+        iframe.onload = () => {
+          setTimeout(() => {
+            iframe.contentWindow?.print();
+            setTimeout(() => document.body.removeChild(iframe), 1000);
+          }, 500);
+        };
+      }
+    } catch (fallbackError) {
+      console.error('PDF Export: Fallback also failed:', fallbackError);
+      alert('Error generating PDF. Please try again or use your browser\'s Print function (Ctrl/Cmd+P).');
+    }
   }
 }

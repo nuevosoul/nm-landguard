@@ -1762,8 +1762,12 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                       source: noiseLevelData.source,
                     } : undefined,
                   };
-                  downloadPDF(pdfData);
-                  toast.success("PDF report opened for printing/download");
+                  toast.info("Generating PDF report...");
+                  downloadPDF(pdfData).then(() => {
+                    toast.success("PDF report downloaded successfully");
+                  }).catch(() => {
+                    toast.error("PDF generation failed — try Ctrl/Cmd+P");
+                  });
                 }}
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -2218,8 +2222,12 @@ const ResultsDashboard = ({ address, onReset, isSample = false }: ResultsDashboa
                       source: noiseLevelData.source,
                     } : undefined,
                   };
-                  downloadPDF(pdfData);
-                  toast.success("PDF report opened for printing/download");
+                  toast.info("Generating PDF report...");
+                  downloadPDF(pdfData).then(() => {
+                    toast.success("PDF report downloaded successfully");
+                  }).catch(() => {
+                    toast.error("PDF generation failed — try Ctrl/Cmd+P");
+                  });
                 }}
               />
             </div>
